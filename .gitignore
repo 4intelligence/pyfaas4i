@@ -1,0 +1,14 @@
+pyfaas/__pycache__/*
+pyfaas/faas/__pycache__/*
+pyfaas/R_tools/__pycache__/*
+credentials.json
+.vscode/*
+pyfaas/.vscode/*
+pyfaas/.ipynb_checkpoints/*
+.ipynb_checkpoints/*
+tests/*
+config.json
+.venv
+venv
+env
+__pycache__
