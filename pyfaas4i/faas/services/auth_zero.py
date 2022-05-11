@@ -51,7 +51,7 @@ def get_device_code():
         )
         verification_uri_complete = response.json()["verification_uri_complete"]
         print(f"Device verification URI: {verification_uri_complete}")
-        print("Waiting for URI authentication...")
+        print("Waiting for URI authentication... (This process may take up to 90 seconds)")
         _write_config_file(response.json())
         _request_token(response.json())
     return
@@ -82,20 +82,22 @@ def _request_token(device_code_response):
 
 
 
-    toolbar_width = TOKEN_ETA
+    # DEPRECATED CODE: progress bar
 
-    # setup toolbar
-    sys.stdout.write("[%s]" % (" " * 1))
-    sys.stdout.flush()
-    sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
+    # toolbar_width = TOKEN_ETA
 
-    for _ in range(toolbar_width):
-        time.sleep(1) 
-        sys.stdout.write("=")
-        sys.stdout.flush()
+    # # setup toolbar
+    # sys.stdout.write("[%s]" % (" " * 1))
+    # sys.stdout.flush()
+    # sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
 
-    sys.stdout.write("]\n")
+    # for _ in range(toolbar_width):
+    #     time.sleep(1) 
+    #     sys.stdout.write("=")
+    #     sys.stdout.flush()
 
+    # sys.stdout.write("]\n")
+    time.sleep(90)
 
     response = requests.post(url, data=payload, headers=headers, timeout=TIMEOUT)
     if response.ok:

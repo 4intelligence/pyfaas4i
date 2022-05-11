@@ -11,7 +11,7 @@ import base64
 from unidecode import unidecode
 import time
 from requests.structures import CaseInsensitiveDict
-from ._utilities import _get_access_token, APIError, AuthenticationError
+from ._utilities import _get_access_token, _check_version, APIError, AuthenticationError
 from .services.auth_zero import FOURI_USER_AGENT
 
 
@@ -116,6 +116,8 @@ def _build_call(
     if not isinstance(skip_validation, bool):
         raise TypeError(f"skip_validation must be boolean (default is False), provided value was: {skip_validation}.")
 
+    # ---- Check package version
+    _check_version()
     # ---- declare dummy email
     user_email = 'user@legitmail.com'
     # ----- Get access token from auth0

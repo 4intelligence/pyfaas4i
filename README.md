@@ -218,7 +218,7 @@ the user:
 
 The critical input we expect from users is the CV settings (n\_steps and
 n\_windows). In this example, we set our modeling algorithm to perform a
-CV, which will evaluate forecasts 1 step ahead (‘n\_steps’), 12 times
+CV, which will evaluate forecasts 3 steps ahead (‘n\_steps’), 12 times
 (‘n\_windows’).
 
 
@@ -274,7 +274,7 @@ project_name = 'project_example'
 Wants to make sure everything is alright? Though not necessary, you can validate your request beforehand by using the following function:
 
 ``` python
-validate_request(data_list, date_variable, date_format, model_spec, project_name)
+validate_models(data_list, date_variable, date_format, model_spec, project_name)
 ```
 
 It will return a message indicating your specifications are in order or it will point out to the arguments that need adjustment.
@@ -314,7 +314,6 @@ model_spec = {
     'n_windows': 6,
     'n_best': 25,
     'accuracy_crit': 'RMSE',
-    'info_crit': 'AIC',
     'exclusions': [["fs_massa_real", "fs_rend_medio"],
                   ["fs_pop_ea", "fs_pop_des", "fs_pop_ocu"]],
     'golden_variables': ["fs_pmc", "fs_ici"],

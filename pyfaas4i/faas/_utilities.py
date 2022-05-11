@@ -1,4 +1,6 @@
 import json
+import sys
+from logging import warning
 import re
 from os import path
 import importlib.resources as pkg_resources
@@ -18,6 +20,31 @@ with pkg_resources.path(auth_files, "config.ini") as ci:
         config_ini = str(ci)
 
 configur.read(ci)
+
+def _check_version():
+    '''
+    Checks if the local user version is the latest pyfaas4i release
+    '''
+    uri = 'https://api.github.com/repos/4intelligence/pyfaas4i/releases/latest'
+    git_response = requests.get(uri)
+    latest_version = git_response.json()["tag_name"]
+    latest_version = latest_version.replace('v', '')
+    if pyfaas4i.__version__ != latest_version:
+        print(f"Warning: There is a newer version of PyFaaS4i ({latest_version}), you currently have version {pyfaas4i.__version__}. \n This may lead to unexpected behavior. Please update you version of PyFaaS4i")
+        
+        stop_prompt = "Would you like to update it now? (y/n)"
+        update_pyfaas4i = '0'
+        while update_pyfaas4i not in [True, False]:
+            try:
+                update_pkg = input(stop_prompt).lower()
+                update_pyfaas4i = {"y": True, "n": False}[update_pkg]
+            except KeyError:
+                print("Invalid input, please enter Y/y for yes or N/n for No.")
+
+        if update_pyfaas4i:
+            raise SystemExit("Please run 'pip install --upgrade git+https://github.com/4intelligence/pyfaas4i.git' to get the latest version.")
+        return
+
 
 
 def _get_access_token() -> str:
@@ -66,7 +93,8 @@ def download_zip(
 
     """
 
-   
+    # ---- Check for PyFaaS4i latest version
+    _check_version()
     
     regex_filename= re.compile('[@!#$%^&*()<>?/\\|}{~:\[\]]')
     if regex_filename.search(filename):
@@ -149,6 +177,9 @@ def list_projects(return_dict: bool = False):
     Returns:
         project_dict: dataframe or dictionary with information regarding the user projects
     """
+
+    # ---- Check for PyFaaS4i latest version
+    _check_version()
 
     access_token = _get_access_token()
     headers = CaseInsensitiveDict()
