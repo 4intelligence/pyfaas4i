@@ -27,22 +27,25 @@ def _check_version():
     '''
     uri = 'https://api.github.com/repos/4intelligence/pyfaas4i/releases/latest'
     git_response = requests.get(uri)
-    latest_version = git_response.json()["tag_name"]
-    latest_version = latest_version.replace('v', '')
-    if pyfaas4i.__version__ != latest_version:
-        print(f"Warning: There is a newer version of PyFaaS4i ({latest_version}), you currently have version {pyfaas4i.__version__}. \n This may lead to unexpected behavior. Please update you version of PyFaaS4i")
-        
-        stop_prompt = "Would you like to update it now? (y/n)"
-        update_pyfaas4i = '0'
-        while update_pyfaas4i not in [True, False]:
-            try:
-                update_pkg = input(stop_prompt).lower()
-                update_pyfaas4i = {"y": True, "n": False}[update_pkg]
-            except KeyError:
-                print("Invalid input, please enter Y/y for yes or N/n for No.")
 
-        if update_pyfaas4i:
-            raise SystemExit("Please run 'pip install --upgrade git+https://github.com/4intelligence/pyfaas4i.git' to get the latest version.")
+    
+    if git_response.ok:
+        latest_version = git_response.json()["tag_name"]
+        latest_version = latest_version.replace('v', '')
+        if pyfaas4i.__version__ != latest_version:
+            print(f"Warning: There is a newer version of PyFaaS4i ({latest_version}), you currently have version {pyfaas4i.__version__}. \n This may lead to unexpected behavior. Please update you version of PyFaaS4i")
+            
+            stop_prompt = "Would you like to update it now? (y/n)"
+            update_pyfaas4i = '0'
+            while update_pyfaas4i not in [True, False]:
+                try:
+                    update_pkg = input(stop_prompt).lower()
+                    update_pyfaas4i = {"y": True, "n": False}[update_pkg]
+                except KeyError:
+                    print("Invalid input, please enter Y/y for yes or N/n for No.")
+
+            if update_pyfaas4i:
+                raise SystemExit("Please run 'pip install --upgrade git+https://github.com/4intelligence/pyfaas4i.git' to get the latest version.")
         return
 
 
@@ -77,6 +80,7 @@ def download_zip(
     path: str,
     filename: str,
     verbose: bool = True,
+    **kwargs
 ) -> str:
     """
     Downloads all output files from a project in a .zip file
@@ -93,8 +97,24 @@ def download_zip(
 
     """
 
+    if any([x not in ['check_version'] for x in list(kwargs.keys())]):
+        unexpected = list(kwargs.keys())
+        for arg in ['check_version']:
+            if arg in list(kwargs.keys()):
+                unexpected.remove(arg)
+        raise TypeError(f'download_zip() got an unexpected keyword argument: {", ".join(unexpected)}')
+    
+    
+    check_version = True
+
+    
+    if 'check_version' in kwargs:
+        check_version = kwargs['check_version']
+    
     # ---- Check for PyFaaS4i latest version
-    _check_version()
+    if check_version:
+        _check_version()
+
     
     regex_filename= re.compile('[@!#$%^&*()<>?/\\|}{~:\[\]]')
     if regex_filename.search(filename):
@@ -107,7 +127,7 @@ def download_zip(
 
     try:
         response_check = requests.get(
-            url=f"https://fourcasthub-faas-prod.azurewebsites.net/api/v1/projects/{project_id}",
+            url=f"https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects/{project_id}",
             timeout=1200,
             headers=headers,
         )
@@ -150,7 +170,7 @@ def download_zip(
     with open(Path(f"{path}/forecast-{filename}.zip"), "wb+") as fi:
         try:
             response = requests.get(
-                url=f"https://fourcasthub-faas-prod.azurewebsites.net/api/v1/projects/{project_id}/download",
+                url=f"https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects/{project_id}/download",
                 timeout=1200,
                 headers=headers,
                 stream=True,
@@ -168,7 +188,7 @@ def download_zip(
     return response.status_code
 
 
-def list_projects(return_dict: bool = False):
+def list_projects(return_dict: bool = False, **kwargs):
     """
     Retrieves a list of projects previously sent to FaaS that belongs to the user
 
@@ -178,8 +198,24 @@ def list_projects(return_dict: bool = False):
         project_dict: dataframe or dictionary with information regarding the user projects
     """
 
+    if any([x not in ['check_version'] for x in list(kwargs.keys())]):
+        unexpected = list(kwargs.keys())
+        for arg in ['check_version']:
+            if arg in list(kwargs.keys()):
+                unexpected.remove(arg)
+        raise TypeError(f'list_projects() got an unexpected keyword argument: {", ".join(unexpected)}')
+    
+    
+    check_version = True
+
+    
+    if 'check_version' in kwargs:
+        check_version = kwargs['check_version']
+    
     # ---- Check for PyFaaS4i latest version
-    _check_version()
+    if check_version:
+        _check_version()
+
 
     access_token = _get_access_token()
     headers = CaseInsensitiveDict()
@@ -189,7 +225,7 @@ def list_projects(return_dict: bool = False):
     
     try:
         response = requests.get(
-            url="https://fourcasthub-faas-prod.azurewebsites.net/api/v1/projects",
+            url="https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects",
             timeout=1200,
             headers=headers,
         )

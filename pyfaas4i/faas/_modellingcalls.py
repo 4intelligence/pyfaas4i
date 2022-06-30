@@ -1,5 +1,6 @@
 import pandas as pd
 import re
+import copy
 import numpy as np
 import datetime as dt
 from typing import Dict, Type
@@ -24,12 +25,12 @@ def _get_url(extension: str) -> str:
         An url in the for of a string
     """
     if extension == "projects":
-        return "https://fourcasthub-faas-prod.azurewebsites.net/api/v1/projects"
+        return "https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects"
     else:
-        return "https://fourcasthub-validation-prod.azurewebsites.net/api/v1/validate"
+        return "https://4i-4casthub-validation-prod-api.azurewebsites.net/api/v1/validate"
 
 
-def _check_model_spec(model_spec: dict) -> dict:
+def _check_model_spec(model_spec: dict, column_list: list) -> dict:
     """
     Checks for needed values in model_spec and fixes any eventual missing values
     Args:
@@ -44,6 +45,16 @@ def _check_model_spec(model_spec: dict) -> dict:
         and len(model_spec["golden_variables"]) == 0
     ):
         model_spec["golden_variables"] = []
+
+    # If lags is 'all', we replace it by all variable names, except for variables
+    # that are y and date_variable
+   
+    if 'lags' in model_spec.keys() and 'all' in model_spec['lags'].keys():
+        lags_all = model_spec['lags']['all'].copy()    
+        for var in column_list:
+            if var not in model_spec['lags'].keys():
+                model_spec['lags'][var] = lags_all
+        model_spec['lags'].pop('all')
 
     model_spec_template = {
         "log": [True],
@@ -61,6 +72,7 @@ def _check_model_spec(model_spec: dict) -> dict:
             "corr": [True],
             "apply.collinear": ["corr", "rf", "lasso", "no_reduction"],
         },
+        "lags": {}
     }
 
     for key in list(model_spec_template.keys()):
@@ -82,9 +94,6 @@ def _check_model_spec(model_spec: dict) -> dict:
     return model_spec
 
 
-def get_headers():
-    pass
-
 
 def _build_call(
     data_list: Dict[str, pd.DataFrame],
@@ -93,6 +102,7 @@ def _build_call(
     model_spec: dict,
     project_id: str,
     skip_validation: bool,
+    check_version: bool,
     extension: str,
 ) -> str:
 
@@ -117,7 +127,13 @@ def _build_call(
         raise TypeError(f"skip_validation must be boolean (default is False), provided value was: {skip_validation}.")
 
     # ---- Check package version
-    _check_version()
+
+    if check_version:
+        _check_version()
+
+    data_list = data_list.copy()
+    formatted_model_spec = copy.deepcopy(model_spec)
+
     # ---- declare dummy email
     user_email = 'user@legitmail.com'
     # ----- Get access token from auth0
@@ -127,7 +143,7 @@ def _build_call(
     # ------ Check dataframes inside dictionary and turn them into dictionaries themselves
     missing_date_variable = []
     regex_special_chars= re.compile('[@!#$%^&*()<>?/\\|}{~:\[\].-]')
-    
+    columns_list = []
     for key in data_list.keys():
         
         # ----- cleaning column names
@@ -145,6 +161,14 @@ def _build_call(
         # ------ remove accentuation and special characters ------
         data_list[key].columns = [regex_special_chars.sub('_', unidecode(x)) for x in data_list[key].columns]
         
+        # fill columns_list removing date and y variables
+        columns_list = columns_list + list(data_list[key].columns)
+        columns_list.remove(key)
+        try:
+            columns_list.remove(date_variable)
+        except:
+            pass
+
         # converting dataframes into dictionaries
         data_list[key] = data_list[key].fillna("NA").T.to_dict()
 
@@ -170,15 +194,15 @@ def _build_call(
 
     
     
-    # ------ removing accentuation ------
-    if 'golden_variables' in model_spec.keys():
-        model_spec["golden_variables"] = [
-            regex_special_chars.sub('_', unidecode(i)) for i in model_spec["golden_variables"]
+    # ------ removing accentuation and special characters------
+    if 'golden_variables' in formatted_model_spec.keys():
+        formatted_model_spec["golden_variables"] = [
+            regex_special_chars.sub('_', unidecode(i)) for i in formatted_model_spec["golden_variables"]
         ]
     
-    if 'exclusions' in model_spec.keys():
+    if 'exclusions' in formatted_model_spec.keys():
         temp_exclusions = []
-        for i in model_spec["exclusions"]:
+        for i in formatted_model_spec["exclusions"]:
             
             temp_j = []
             for j in i:
@@ -192,25 +216,35 @@ def _build_call(
 
             temp_exclusions.append(temp_j)
         
-        model_spec["exclusions"] = temp_exclusions
+        formatted_model_spec["exclusions"] = temp_exclusions
+    
+    if 'lags' in formatted_model_spec.keys():
+        temp_lags = {}
+        for var, lags in formatted_model_spec['lags'].items():
+            var_tidy = regex_special_chars.sub('_', unidecode(var))
+            temp_lags[var_tidy] = lags
+        formatted_model_spec['lags'] = temp_lags
+    
     
    
 
-    # ----- Change model_spec to be R compatible
-    for key in model_spec.keys():
+    # ----- Change formatted_model_spec to be R compatible
+    for key in formatted_model_spec.keys():
         if key == "selection_methods":
-            for method in model_spec[key].keys():
+            for method in formatted_model_spec[key].keys():
                 if method != "apply.collinear":
-                    model_spec[key][method] = [model_spec[key][method]]
-        elif key not in ["exclusions", "golden_variables"]:
-            model_spec[key] = [model_spec[key]]
+                    formatted_model_spec[key][method] = [formatted_model_spec[key][method]]
+        elif key not in ["lags", "exclusions", "golden_variables"]:
+            formatted_model_spec[key] = [formatted_model_spec[key]]
 
-    # ----- Filling model_spec if anything is missing
-    model_spec = _check_model_spec(model_spec)
+    # ----- Filling formatted_model_spec if anything is missing
+    columns_list = list(set(columns_list))
+    formatted_model_spec = _check_model_spec(model_spec=formatted_model_spec, column_list=columns_list)
     # ------ Unite everything into a dictionary -----------------
+   
     body = {
         "data_list": data_list,
-        "model_spec": model_spec,
+        "model_spec": formatted_model_spec,
         'user_email': [user_email],
         "project_id": [project_id],
         "date_variable": [date_variable],
@@ -227,10 +261,10 @@ def _build_call(
 
     # Uncomment to save locally
 
-    # with open('./base64_body', 'wt') as save_file:
+    # with open('./base64_body_lag_2', 'wt') as save_file:
 
     #     save_file.write(zipped_body)
-
+    
     # return 0
 
     headers = CaseInsensitiveDict()
@@ -269,7 +303,8 @@ def _build_call(
                 validation_response = json.loads(validation_response.text)
 
                 if validation_code in [200, 201, 202] and validation_response['status'] in [200, 201, 202]:
-                    if 'info' not in validation_response.keys() or 'error_list' not in validation_response['info'].keys():
+
+                    if 'info' not in validation_response.keys() or 'error_list' not in validation_response['info'].keys() or len(validation_response['info']['error_list']) == 0:
                         modelling_response = requests.post(url, json={'body': zipped_body, 'skip_validation': True}, headers=headers, timeout=1200) 
                         modelling_status = modelling_response.status_code
                         modelling_response = json.loads(modelling_response.text)
@@ -306,7 +341,7 @@ def _build_call(
 def validate_models(data_list: Dict[str, pd.DataFrame], 
 date_variable: str, date_format: str, 
 model_spec: dict, project_name: str, 
-skip_validation: bool = False):
+**kwargs):
     '''
     This function directs the _build_call function to the validation API
      Args:
@@ -322,10 +357,26 @@ skip_validation: bool = False):
         If successfully received, returns the API's return code and email address to which the results
         will be sent. If failed, return API's return code.
     '''
+    if any([x not in ['skip_validation', 'check_version'] for x in list(kwargs.keys())]):
+        unexpected = list(kwargs.keys())
+        for arg in ['skip_validation', 'check_version']:
+            if arg in list(kwargs.keys()):
+                unexpected.remove(arg)
 
+        raise TypeError(f'validate_models() got an unexpected keyword argument: {", ".join(unexpected)}')
+    skip_validation = False
+    check_version = True
+
+    if 'skip_validation' in kwargs:
+        skip_validation = kwargs['skip_validation']
     
+    if 'check_version' in kwargs:
+        check_version = kwargs['check_version']
+    
+
+
     req = _build_call(data_list, date_variable, date_format, model_spec, project_name, 
-    skip_validation, 'validate')
+    skip_validation, check_version, 'validate')
     req_status = req.status_code
 
     api_response = json.loads(req.text)
@@ -387,7 +438,7 @@ skip_validation: bool = False):
 
 def run_models(data_list: Dict[str, pd.DataFrame], 
 date_variable: str, date_format: str, 
-model_spec: dict, project_name: str, skip_validation: bool = False) -> str:
+model_spec: dict, project_name: str, **kwargs) -> str:
     '''
 
     This function directs the _build_call function to the modeling API
@@ -405,8 +456,25 @@ model_spec: dict, project_name: str, skip_validation: bool = False) -> str:
         will be sent. If failed, return API's return code.
     '''
     
+    if any([x not in ['skip_validation', 'check_version'] for x in list(kwargs.keys())]):
+        unexpected = list(kwargs.keys())
+        for arg in ['skip_validation', 'check_version']:
+            if arg in list(kwargs.keys()):
+                unexpected.remove(arg)
+
+        raise TypeError(f'run_models() got an unexpected keyword argument: {", ".join(unexpected)}')
+    
+    skip_validation = False
+    check_version = True
+
+    if 'skip_validation' in kwargs:
+        skip_validation = kwargs['skip_validation']
+    
+    if 'check_version' in kwargs:
+        check_version = kwargs['check_version']
+
     req = _build_call(data_list, date_variable, date_format, model_spec, project_name, 
-    skip_validation, 'projects')
+    skip_validation, check_version, 'projects')
     api_response_validation = req[0]
     api_response_modelling = req[1]
 

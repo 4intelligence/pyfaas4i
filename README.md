@@ -202,17 +202,20 @@ the user:
 
   - **exclusions**: restrictions on features in the same model (which variables should not be included in the same model);
 
-    - If none, should be passed as an empty list ("exclusions = []" or "exclusions = list()"), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+    - If none, should be passed as an empty list ("exclusions": [] or "exclusions": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
 
 
   - **golden_variables**: features that must be included in, at least, one model (separate or together);
-    - If none, should be passed as an empty list ("golden_variables = []" or "golden_variables = list()"), otherwise it should receive a list with the golden variables (see advanced options below for examples)
+    - If none, should be passed as an empty list ("golden_variables": [] or "golden_variables": list()), otherwise it should receive a list with the golden variables (see advanced options below for examples)
 
-  - **fill_forecast**: if TRUE, it enables forecasting explanatory variables in order to avoid NAs in future values;
-    - Can be set to TRUE or FALSE.
+  - **fill_forecast**: if True, it enables forecasting explanatory variables in order to avoid NAs in future values;
+    - Can be set to True or False.
 
   - **cv_summary**: determines whether ‘mean’ ou ‘median’ will be used to calculate the summary statistic of the accuracy measure over the CV windows.
     - Can be set to 'mean' or 'median'.
+  
+  - **lags**: defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. If you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. 
+    - The default is an empty dictionary ("lags": {}).
 
 <br>
 
@@ -241,7 +244,6 @@ model_spec = {
               'seas.d': True,
               'n_best': 25,
               'accuracy_crit': 'MAPE',
-              'info_crit': 'AIC',
               'exclusions': [],
               'golden_variables': [],
               'fill_forecast': False,
@@ -251,7 +253,8 @@ model_spec = {
                   'rf' : True,
                   'corr' : True,
                   'apply.collinear' : ["corr","rf","lasso","no_reduction"]
-                  }      
+                  },
+              'lags': {}      
               }
 ```
 
