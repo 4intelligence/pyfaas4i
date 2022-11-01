@@ -72,7 +72,8 @@ def _check_model_spec(model_spec: dict, column_list: list) -> dict:
             "corr": [True],
             "apply.collinear": ["corr", "rf", "lasso", "no_reduction"],
         },
-        "lags": {}
+        "lags": {},
+        "allowdrift": [True]
     }
 
     for key in list(model_spec_template.keys()):

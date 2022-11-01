@@ -217,6 +217,11 @@ the user:
   - **lags**: defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. If you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. 
     - The default is an empty dictionary ("lags": {}).
 
+  - **allowdrift**: if True, drift terms are considered in arima models;
+
+    - Can be set to True or False.
+
+
 <br>
 
 The critical input we expect from users is the CV settings (n\_steps and
@@ -254,7 +259,8 @@ model_spec = {
                   'corr' : True,
                   'apply.collinear' : ["corr","rf","lasso","no_reduction"]
                   },
-              'lags': {}      
+              'lags': {},
+              'allowdrift': True      
               }
 ```
 

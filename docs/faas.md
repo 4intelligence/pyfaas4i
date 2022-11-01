@@ -58,6 +58,10 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
         - apply.collinear: True if you wish that our feature selection avoids collinearity within the explanatory variables in the models - this is equivalent to setting ["corr","rf","lasso","no_reduction"]. False or "" otherwise.
 
     - lags (Optional): defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. However, if you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If, for example the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. The default is "lags": {}.
+    
+    - allowdrift (Optional): if True, drift terms are considered in arima models;
+
+        - Can be set to True or False.
 
 - **project_name: str**
 
