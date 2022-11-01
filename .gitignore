@@ -12,3 +12,6 @@ config.json
 venv
 env
 __pycache__
+.github/workflows/*
+*.yml
+*.yaml
