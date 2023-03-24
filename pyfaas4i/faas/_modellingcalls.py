@@ -25,9 +25,9 @@ def _get_url(extension: str) -> str:
         An url in the for of a string
     """
     if extension == "projects":
-        return "https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects"
+        return "https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects"
     else:
-        return "https://4i-4casthub-validation-prod-api.azurewebsites.net/api/v1/validate"
+        return "https://run-prod-4casthub-api-faas-validation-zdfk3g7cpq-ue.a.run.app/api/v1/validate"
 
 
 def _check_model_spec(model_spec: dict, column_list: list) -> dict:

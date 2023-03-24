@@ -127,7 +127,7 @@ def download_zip(
 
     try:
         response_check = requests.get(
-            url=f"https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects/{project_id}",
+            url=f"https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects/{project_id}",
             timeout=1200,
             headers=headers,
         )
@@ -170,7 +170,7 @@ def download_zip(
     with open(Path(f"{path}/forecast-{filename}.zip"), "wb+") as fi:
         try:
             response = requests.get(
-                url=f"https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects/{project_id}/download",
+                url=f"https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects/{project_id}/download",
                 timeout=1200,
                 headers=headers,
                 stream=True,
@@ -225,7 +225,7 @@ def list_projects(return_dict: bool = False, **kwargs):
     
     try:
         response = requests.get(
-            url="https://4i-4casthub-faas-prod-api.azurewebsites.net/api/v1/projects",
+            url="https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects",
             timeout=1200,
             headers=headers,
         )
