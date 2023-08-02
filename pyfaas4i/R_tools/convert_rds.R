@@ -28,7 +28,7 @@ get_json <- function(data){
     temp_model <-  temp$models[[1]]
     temp_type <- temp$infos[[1]]
     
-    if(temp$type %in% c("ARIMA", "auto.arima")){
+    if(temp$type %in% c("ARIMA", "auto.arima", "ARIMA_business")){
       
       residuals = stats::residuals(temp_model) %>% as_tibble()
 

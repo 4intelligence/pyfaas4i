@@ -13,7 +13,7 @@ It will provide the user with the login steps to use PyFaaS for modelling.
 from pyfaas4i.faas import login
 login()
 ```
-
+By default, the login function will wait 90 seconds for authentication. If you wish to adjust the wait time, it is possible to change the parameter using a numeric value for sleep_time.
 ---
 
 ## services.get_device_code()

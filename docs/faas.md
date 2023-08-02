@@ -65,7 +65,7 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
 
 - **project_name: str**
 
-    Name of the project defined by the user
+    Name of the project defined by the user, that should be at most 50 characters long
 
 **Returns**: 
     API return code, and errors and/or warnings if any were found.
@@ -132,7 +132,7 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) for modeling.
     - lags (Optional): defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. However, if you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If, for example the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. The default is "lags": {}.
 - **project_name: str**
 
-    Name of the project defined by the user
+    Name of the project defined by the user, that should be at most 50 characters long
 
 - **skip_validation: bool**
 
@@ -152,13 +152,13 @@ For examples of usage, refer to this [notebook](https://github.com/4intelligence
 
 
 ## faas.download_zip()
-**function <span style="color:orange">download_zip</span>.(project_name, path, filename, verbose)**
+**function <span style="color:orange">download_zip</span>.(project_id, path, filename, verbose)**
 
 Makes a request and downloads all files from a project created in FaaS Modelling or Model Update.
 
 **Parameters**
 
-- **project_name: str:**
+- **project_id: str:**
 
     id of the project to be downloaded - must have been concluded
 - **path: str**

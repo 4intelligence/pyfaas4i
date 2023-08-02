@@ -24,6 +24,7 @@ Each user will need to setup the authentication using the **login** function (*p
 from pyfaas4i.faas import login
 login()
 ```
+By default, the login function will wait 90 seconds for authentication. If you wish to adjust the wait time, it is possible to change the parameter using a numeric value for **sleep_time**.
 
 ## I) How it works
 
@@ -269,7 +270,7 @@ model_spec = {
 
 #### 5\) Project Name \[‘project\_name’\]
 
-Define a project name. It accepts character and numeric inputs. Special
+Define a project name. A string with character and/or numeric inputs that should be at most 50 characters long. Special
 characters will be removed.
 
 ``` python

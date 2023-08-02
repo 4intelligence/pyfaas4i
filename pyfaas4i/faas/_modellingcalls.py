@@ -3,7 +3,7 @@ import re
 import copy
 import numpy as np
 import datetime as dt
-from typing import Dict, Type
+from typing import Dict, Type, Union
 import requests
 import json
 import gzip
@@ -12,10 +12,10 @@ import base64
 from unidecode import unidecode
 import time
 from requests.structures import CaseInsensitiveDict
-from ._utilities import _get_access_token, _check_version, APIError, AuthenticationError
+from ._utilities import _get_access_token, _version_check, _get_proxies, APIError, AuthenticationError
 from .services.auth_zero import FOURI_USER_AGENT
 
-
+    
 def _get_url(extension: str) -> str:
     """
     Defines the endpoint for the data to be sent
@@ -103,8 +103,10 @@ def _build_call(
     model_spec: dict,
     project_id: str,
     skip_validation: bool,
-    check_version: bool,
+    version_check: bool,
     extension: str,
+    proxy_url: Union[str, None],
+    proxy_port: Union[str, None]
 ) -> str:
 
     """
@@ -119,7 +121,8 @@ def _build_call(
         project_id: name of the project defined by the user
         skip_validation: if the validation step should be bypassed
         extension: Wheter to call the validation of modeling API
-
+        proxy_url: A proxy for URL during the request
+        proxy_port: A proxy for port to compose the URL during the request
     Returns:
         A response from the called API
     """
@@ -127,10 +130,9 @@ def _build_call(
     if not isinstance(skip_validation, bool):
         raise TypeError(f"skip_validation must be boolean (default is False), provided value was: {skip_validation}.")
 
-    # ---- Check package version
-
-    if check_version:
-        _check_version()
+    # ---- Check project_id length
+    if len(project_id) > 50:
+        raise ValueError("The project_name should be at most 50 characters long.")
 
     data_list = data_list.copy()
     formatted_model_spec = copy.deepcopy(model_spec)
@@ -141,17 +143,31 @@ def _build_call(
 
     access_token = _get_access_token()
 
+    # ----- Get proxies (if any)
+    proxies = _get_proxies(proxy_url=proxy_url,
+                           proxy_port=proxy_port)
+
+    # ---- Check package version
+
+    if version_check:
+        _version_check(proxies=proxies)
+
     # ------ Check dataframes inside dictionary and turn them into dictionaries themselves
     missing_date_variable = []
-    regex_special_chars= re.compile('[@!#$%^&*()<>?/\\|}{~:\[\].-]')
+    regex_special_chars = re.compile('[@!#$%^&*()<>?/\\|}{~:\[\].-]')
     columns_list = []
+
+    # Formatting date_variable and keeping the original value for checking
+    orig_date_variable = date_variable
+    date_variable = regex_special_chars.sub('_', unidecode(date_variable.lower()))
+
     for key in data_list.keys():
         
         # ----- cleaning column names
 
-        # Checks for absence of date_variable in dataframes
+        # Checks for absence of orig_date_variable in dataframes
         try:
-            data_list[key][date_variable] = data_list[key][date_variable].astype(str)
+            data_list[key][orig_date_variable] = data_list[key][orig_date_variable].astype(str)
         except:
             missing_date_variable.append(str(key))
             pass
@@ -160,11 +176,12 @@ def _build_call(
             raise KeyError(f"Variable {key} not found in the dataset")
 
         # ------ remove accentuation and special characters ------
-        data_list[key].columns = [regex_special_chars.sub('_', unidecode(x)) for x in data_list[key].columns]
-        
+        data_list[key].columns = [regex_special_chars.sub('_', unidecode(x.lower())) for x in data_list[key].columns]
+
         # fill columns_list removing date and y variables
         columns_list = columns_list + list(data_list[key].columns)
-        columns_list.remove(key)
+        formatted_y_var = regex_special_chars.sub('_', unidecode(key.lower()))
+        columns_list.remove(formatted_y_var)
         try:
             columns_list.remove(date_variable)
         except:
@@ -189,7 +206,7 @@ def _build_call(
 
     for key in list(data_list.keys()):
         data_list[key] = [x for x in data_list[key].values()]
-        data_list[f"forecast_{position}_" + regex_special_chars.sub('_', unidecode(key))] = data_list.pop(key)
+        data_list[f"forecast_{position}_" + regex_special_chars.sub('_', unidecode(key.lower()))] = data_list.pop(key)
         position += 1
 
 
@@ -198,7 +215,7 @@ def _build_call(
     # ------ removing accentuation and special characters------
     if 'golden_variables' in formatted_model_spec.keys():
         formatted_model_spec["golden_variables"] = [
-            regex_special_chars.sub('_', unidecode(i)) for i in formatted_model_spec["golden_variables"]
+            regex_special_chars.sub('_', unidecode(i.lower())) for i in formatted_model_spec["golden_variables"]
         ]
     
     if 'exclusions' in formatted_model_spec.keys():
@@ -208,11 +225,11 @@ def _build_call(
             temp_j = []
             for j in i:
                 if isinstance(j, str):                
-                    temp_j.append(regex_special_chars.sub('_', unidecode(j)))
+                    temp_j.append(regex_special_chars.sub('_', unidecode(j.lower())))
                 else:
                     temp_k = []
                     for k in j:
-                        temp_k.append(regex_special_chars.sub('_', unidecode(k)))
+                        temp_k.append(regex_special_chars.sub('_', unidecode(k.lower())))
                     temp_j.append(temp_k)
 
             temp_exclusions.append(temp_j)
@@ -222,7 +239,7 @@ def _build_call(
     if 'lags' in formatted_model_spec.keys():
         temp_lags = {}
         for var, lags in formatted_model_spec['lags'].items():
-            var_tidy = regex_special_chars.sub('_', unidecode(var))
+            var_tidy = regex_special_chars.sub('_', unidecode(var.lower()))
             temp_lags[var_tidy] = lags
         formatted_model_spec['lags'] = temp_lags
     
@@ -280,6 +297,7 @@ def _build_call(
                 {"body": zipped_body, "check_model_spec": True},
                 headers=headers,
                 timeout=1200,
+                proxies=proxies
             )
 
         else:
@@ -290,6 +308,7 @@ def _build_call(
                     json={"body": zipped_body, "skip_validation": True},
                     headers=headers,
                     timeout=1200,
+                    proxies=proxies
                 )
                 modelling_status = modelling_response.status_code
                 modelling_response = json.loads(modelling_response.text)
@@ -298,7 +317,12 @@ def _build_call(
             else:
                 # Now calls validation separately
 
-                validation_response = requests.post(url_validation, {'body': zipped_body, 'check_model_spec': True}, headers=headers, timeout=1200)
+                validation_response = requests.post(url_validation,
+                                                    {'body': zipped_body,
+                                                     'check_model_spec': True},
+                                                    headers=headers,
+                                                    timeout=1200,
+                                                    proxies=proxies)
                 
                 validation_code =  validation_response.status_code
                 validation_response = json.loads(validation_response.text)
@@ -306,7 +330,12 @@ def _build_call(
                 if validation_code in [200, 201, 202] and validation_response['status'] in [200, 201, 202]:
 
                     if 'info' not in validation_response.keys() or 'error_list' not in validation_response['info'].keys() or len(validation_response['info']['error_list']) == 0:
-                        modelling_response = requests.post(url, json={'body': zipped_body, 'skip_validation': True}, headers=headers, timeout=1200) 
+                        modelling_response = requests.post(url,
+                                                           json={'body': zipped_body,
+                                                                 'skip_validation': True},
+                                                           headers=headers,
+                                                           timeout=1200,
+                                                           proxies=proxies) 
                         modelling_status = modelling_response.status_code
                         modelling_response = json.loads(modelling_response.text)
                         modelling_response['api_status_code'] = modelling_status
@@ -339,10 +368,12 @@ def _build_call(
 
 
 
-def validate_models(data_list: Dict[str, pd.DataFrame], 
-date_variable: str, date_format: str, 
-model_spec: dict, project_name: str, 
-**kwargs):
+def validate_models(data_list: Dict[str, pd.DataFrame],
+                    date_variable: str,
+                    date_format: str,
+                    model_spec: dict,
+                    project_name: str,
+                    **kwargs):
     '''
     This function directs the _build_call function to the validation API
      Args:
@@ -351,37 +382,48 @@ model_spec: dict, project_name: str,
         date_format: format of date_variable following datetime notation
                     (See https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
         model_spec: dictionary containing arguments required by the API
-        project_name: name of the project defined by the user
+        project_name: name of the project defined by the user, that should be at most 50 characters long
         skip_validation: if the validation step should be bypassed
 
     Returns:
         If successfully received, returns the API's return code and email address to which the results
         will be sent. If failed, return API's return code.
     '''
-    if any([x not in ['skip_validation', 'check_version'] for x in list(kwargs.keys())]):
+    if any([x not in ['skip_validation', 'version_check',
+                      'proxy_url', 'proxy_port'] for x in list(kwargs.keys())]):
         unexpected = list(kwargs.keys())
-        for arg in ['skip_validation', 'check_version']:
+        for arg in ['skip_validation', 'version_check',
+                    'proxy_url', 'proxy_port']:
             if arg in list(kwargs.keys()):
                 unexpected.remove(arg)
 
         raise TypeError(f'validate_models() got an unexpected keyword argument: {", ".join(unexpected)}')
     skip_validation = False
-    check_version = True
+    version_check = True
+    proxy_url = None
+    proxy_port = None
 
     if 'skip_validation' in kwargs:
         skip_validation = kwargs['skip_validation']
-    
-    if 'check_version' in kwargs:
-        check_version = kwargs['check_version']
-    
 
+    if 'version_check' in kwargs:
+        version_check = kwargs['version_check']
 
-    req = _build_call(data_list, date_variable, date_format, model_spec, project_name, 
-    skip_validation, check_version, 'validate')
+    if 'proxy_url' in kwargs:
+        proxy_url = kwargs['proxy_url']
+
+    if 'proxy_port' in kwargs:
+        proxy_port = kwargs['proxy_port']
+
+    req = _build_call(data_list, date_variable,
+                      date_format, model_spec,
+                      project_name, skip_validation,
+                      version_check, 'validate',
+                      proxy_url, proxy_port)
     req_status = req.status_code
 
     api_response = json.loads(req.text)
-    
+
     if req_status not in [200, 201, 202]:
         if req_status in [408, 504]:
             raise APIError(f"Status Code: {str(req_status)}. Content: Timeout.\nPlease try sending a smaller data_list.")
@@ -391,14 +433,14 @@ model_spec: dict, project_name: str,
             raise APIError(f"Status Code: {str(req_status)}. Content: Validation - Service Unavailable.\nPlease try again later.")
         else:
             raise APIError(f"Status Code: {str(req_status)}. Content: {str(api_response)}.\nCheck if you have the latest version of this package and/or try again later.")
-        
+
 
     elif 'status' not in api_response:
         raise APIError(f"Status Code: {str(req_status)}. Content: {str(api_response)}.\nUnmapped internal error.")
 
     if api_response['status'] in [200, 201, 202]:
         print(f"Request successfully received and validated!\nNow you can call the run_models function to run your model.")
-        
+
 
     else:
         print(f'Something went wrong!\nStatus code: {api_response["status"]}')
@@ -424,22 +466,22 @@ model_spec: dict, project_name: str,
         if "warning_list" in api_response["info"].keys() and isinstance(
             api_response["info"]["warning_list"], dict
         ):
-            print("\nWarning User Input:")
+            print("\nWarning User Input:\n")
             warning_list = api_response["info"]["warning_list"]
 
             for warning_place in warning_list.keys():
-                print(f"*{warning_place}*\n")
-                for warning_field in warning_list[warning_place].keys():
-                    warning_description = warning_list[warning_place][warning_field]
-
-                    print(f'{warning_field}\n - {warning_description["status"]}: {warning_description["error_type"]}; Original Value: {warning_description["original_value"]} in dataset: {warning_description["dataset_error"]}')
+                print(f"*{warning_place}*")
+                warning_description = warning_list[warning_place]
+                print(f'{warning_description["status"]} {warning_description["error_type"]}. Original Value: {warning_description["original_value"]} in dataset: {warning_description["dataset_error"]}\n')
 
 
 
-
-def run_models(data_list: Dict[str, pd.DataFrame], 
-date_variable: str, date_format: str, 
-model_spec: dict, project_name: str, **kwargs) -> str:
+def run_models(data_list: Dict[str, pd.DataFrame],
+               date_variable: str,
+               date_format: str,
+               model_spec: dict,
+               project_name: str,
+               **kwargs) -> str:
     '''
 
     This function directs the _build_call function to the modeling API
@@ -449,7 +491,7 @@ model_spec: dict, project_name: str, **kwargs) -> str:
         date_format: format of date_variable following datetime notation
                     (See https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
         model_spec: dictionary containing arguments required by the API
-        project_name: name of the project defined by the user
+        project_name: name of the project defined by the user, that should be at most 50 characters long
         skip_validation: if the validation step should be bypassed
 
     Returns:
@@ -457,25 +499,38 @@ model_spec: dict, project_name: str, **kwargs) -> str:
         will be sent. If failed, return API's return code.
     '''
     
-    if any([x not in ['skip_validation', 'check_version'] for x in list(kwargs.keys())]):
+    if any([x not in ['skip_validation', 'version_check',
+                      'proxy_url', 'proxy_port'] for x in list(kwargs.keys())]):
         unexpected = list(kwargs.keys())
-        for arg in ['skip_validation', 'check_version']:
+        for arg in ['skip_validation', 'version_check',
+                    'proxy_url', 'proxy_port']:
             if arg in list(kwargs.keys()):
                 unexpected.remove(arg)
 
         raise TypeError(f'run_models() got an unexpected keyword argument: {", ".join(unexpected)}')
     
     skip_validation = False
-    check_version = True
+    version_check = True
+    proxy_url = None
+    proxy_port = None
 
     if 'skip_validation' in kwargs:
         skip_validation = kwargs['skip_validation']
     
-    if 'check_version' in kwargs:
-        check_version = kwargs['check_version']
+    if 'version_check' in kwargs:
+        version_check = kwargs['version_check']
 
-    req = _build_call(data_list, date_variable, date_format, model_spec, project_name, 
-    skip_validation, check_version, 'projects')
+    if 'proxy_url' in kwargs:
+        proxy_url = kwargs['proxy_url']
+
+    if 'proxy_port' in kwargs:
+        proxy_port = kwargs['proxy_port']
+
+    req = _build_call(data_list, date_variable, 
+                      date_format, model_spec,
+                      project_name, skip_validation,
+                      version_check, 'projects',
+                      proxy_url, proxy_port)
     api_response_validation = req[0]
     api_response_modelling = req[1]
 
@@ -529,16 +584,13 @@ model_spec: dict, project_name: str, **kwargs) -> str:
             if "warning_list" in api_response_validation["info"].keys() and isinstance(
                 api_response_validation["info"]["warning_list"], dict
             ):
-                print("\nWarning User Input:")
+                print("\nWarning User Input:\n")
                 warning_list = api_response_validation["info"]["warning_list"]
 
                 for warning_place in warning_list.keys():
-                    print(f"*{warning_place}*\n")
-                    for warning_field in warning_list[warning_place].keys():
-                        warning_description = warning_list[warning_place][warning_field]
-                        print(
-                            f'{warning_field}\n - {warning_description["status"]}: {warning_description["error_type"]}; Original Value: {warning_description["original_value"]} in dataset: {warning_description["dataset_error"]}'
-                        )
+                    print(f"*{warning_place}*")
+                    warning_description = warning_list[warning_place]
+                    print(f'{warning_description["status"]} {warning_description["error_type"]}. Original Value: {warning_description["original_value"]} in dataset: {warning_description["dataset_error"]}\n')
 
     if (
         "info" not in api_response_modelling.keys()
