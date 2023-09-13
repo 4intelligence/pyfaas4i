@@ -460,7 +460,7 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
                 for error_field in error_list[error_place].keys():
                     error_description = error_list[error_place][error_field]
                     print(
-                        f'{error_field}\n - {error_description["status"]}: {error_description["error_type"]}; Original Value: {error_description["original_value"]} in dataset: {error_description["dataset_error"]}'
+                        f'{error_field}\n - {error_description["status"]} {error_description["error_type"]}. Original Value: {error_description["original_value"]} in dataset: {error_description["dataset_error"]}'
                     )
 
         if "warning_list" in api_response["info"].keys() and isinstance(
@@ -578,7 +578,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
                     for error_field in error_list[error_place].keys():
                         error_description = error_list[error_place][error_field]
                         print(
-                            f'{error_field}\n - {error_description["status"]}: {error_description["error_type"]}; Original Value: {error_description["original_value"]} in dataset: {error_description["dataset_error"]}'
+                            f'{error_field}\n - {error_description["status"]} {error_description["error_type"]}. Original Value: {error_description["original_value"]} in dataset: {error_description["dataset_error"]}'
                         )
 
             if "warning_list" in api_response_validation["info"].keys() and isinstance(
