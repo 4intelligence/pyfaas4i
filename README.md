@@ -222,7 +222,9 @@ the user:
 
     - Can be set to True or False.
 
+  - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
 
+    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
 <br>
 
 The critical input we expect from users is the CV settings (n\_steps and
@@ -261,7 +263,8 @@ model_spec = {
                   'apply.collinear' : ["corr","rf","lasso","no_reduction"]
                   },
               'lags': {},
-              'allowdrift': True      
+              'allowdrift': True,
+              'user_model': []    
               }
 ```
 
@@ -334,7 +337,12 @@ model_spec = {
                           'rf' : True,
                           'corr' : True,
                           'apply.collinear' : []
-                         }   
+                         },
+    'lags': {"fs_rend_medio": [1,2,3],
+             "fs_pmc": [1,2,3]},
+    'allowdrift': False,
+    'user_model': [["fs_massa_real", "l2_fs_pmc"],
+                   ["fs_rend_medio"]]
     }
 ```
 
@@ -403,6 +411,23 @@ Random Forests and the correlation approach.
 
 <br>
 
+The **lags** defines dictionary of lags of explanatory variables to be tested in dataset, in this example, we are considering lags 1, 2 and 3 for the variables 'fs_rend_medio' and 'fs_pmc'. Such lags will be called 'l1_fs_rend_medio', 'l2_fs_rend_medio', 'l2_fs_rend_medio', 'l1_fs_pmc', 'l2_fs_pmc' and 'l3_fs_pmc', if these names are not already in used within user's dataset.
+
+``` python
+'lags': {"fs_rend_medio": [1,2,3],
+         "fs_pmc": [1,2,3]}
+```
+
+<br>
+
+The **user_model** defines one or more models that should be included in the available models. Besides these variables, any variable that is added to regular modeling will also be in the models created from **user_model**. It is also possible to include a lagged variable (if defined in **lags**) among the variables in **user_model**. For example, we expect to see a model that includes only 'fs_massa_real', the second lag of 'fs_pmc' and the variables added within the pipeline, no other explanatory variable.
+
+``` python
+'user_model': [["fs_massa_real", "l2_fs_pmc"],
+               ["fs_rend_medio"]]
+```
+
+<br>
 
 ---
 

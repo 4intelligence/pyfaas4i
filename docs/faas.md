@@ -63,6 +63,10 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
 
         - Can be set to True or False.
 
+    - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
+
+    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+    
 - **project_name: str**
 
     Name of the project defined by the user, that should be at most 50 characters long
@@ -130,6 +134,11 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) for modeling.
         - apply.collinear: True if you wish that our feature selection avoids collinearity within the explanatory variables in the models - this is equivalent to setting ["corr","rf","lasso","no_reduction"]. False or "" otherwise.
 
     - lags (Optional): defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. However, if you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If, for example the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. The default is "lags": {}.
+
+    - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
+
+    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+
 - **project_name: str**
 
     Name of the project defined by the user, that should be at most 50 characters long

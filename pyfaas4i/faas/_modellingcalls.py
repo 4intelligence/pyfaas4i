@@ -73,7 +73,8 @@ def _check_model_spec(model_spec: dict, column_list: list) -> dict:
             "apply.collinear": ["corr", "rf", "lasso", "no_reduction"],
         },
         "lags": {},
-        "allowdrift": [True]
+        "allowdrift": [True],
+        "user_model": [[]]
     }
 
     for key in list(model_spec_template.keys()):
@@ -244,7 +245,15 @@ def _build_call(
         formatted_model_spec['lags'] = temp_lags
     
     
-   
+    if 'user_model' in formatted_model_spec.keys():
+        temp_user_model = []
+
+        for i in formatted_model_spec["user_model"]:       
+                temp_j = []
+                for j in i:
+                    temp_j.append(regex_special_chars.sub('_', unidecode(j.lower())))
+                temp_user_model.append(temp_j)
+        formatted_model_spec["user_model"] = temp_user_model
 
     # ----- Change formatted_model_spec to be R compatible
     for key in formatted_model_spec.keys():
@@ -252,7 +261,7 @@ def _build_call(
             for method in formatted_model_spec[key].keys():
                 if method != "apply.collinear":
                     formatted_model_spec[key][method] = [formatted_model_spec[key][method]]
-        elif key not in ["lags", "exclusions", "golden_variables"]:
+        elif key not in ["lags", "exclusions", "golden_variables", "user_model"]:
             formatted_model_spec[key] = [formatted_model_spec[key]]
 
     # ----- Filling formatted_model_spec if anything is missing
