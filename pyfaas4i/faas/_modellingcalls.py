@@ -155,6 +155,7 @@ def _build_call(
 
     # ------ Check dataframes inside dictionary and turn them into dictionaries themselves
     missing_date_variable = []
+    long_variable_name = []
     regex_special_chars = re.compile('[@!#$%^&*()<>?/\\|}{~:\[\].-]')
     columns_list = []
 
@@ -188,6 +189,9 @@ def _build_call(
         except:
             pass
 
+        if any(len(col) > 50 for col in data_list[key].columns):
+            long_variable_name.append(str(key))
+
         # converting dataframes into dictionaries
         data_list[key] = data_list[key].fillna("NA").T.to_dict()
 
@@ -200,6 +204,12 @@ def _build_call(
     if len(missing_date_variable) > 0:
         raise KeyError(
             f"Given date_variable '{date_variable}' not found in dataframe(s): {' '.join([str(x) for x in missing_date_variable])}"
+        )
+
+    # Checks if any dataframe have a variable name longer than 50 characters
+    if len(long_variable_name) > 0:
+        raise KeyError(
+            f"At least one variable name longer than 50 characters found in dataframe(s): {' '.join([str(x) for x in long_variable_name])}"
         )
 
     # ------ Convert dict to list -----------------------------
