@@ -37,7 +37,7 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
         Default is 20.
 
     - accuracy_crit (Optional): which criterion should be used to measure the accuracy of the forecast during the CV;
-        Options: "MPE","MAPE", "WMAPE" or "RMSE" (Default: "MAPE").
+        Options: "MPE","MAPE", "WMAPE", "RMSE", "MASE" or "MASEs" (Default: "MAPE").
 
     - exclusions (Optional): restrictions on features in the same model (which variables should not be included in the same model);
         Default is '"exclusions": []', otherwise it should receive a list of lists containing the exclusion variables in the list.
@@ -113,7 +113,7 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) for modeling.
         Default is 20.
 
     - accuracy_crit (Optional): which criterion should be used to measure the accuracy of the forecast during the CV;
-        Options: "MPE","MAPE", "WMAPE" or "RMSE" (Default: "MAPE").
+        Options: "MPE","MAPE", "WMAPE", "RMSE", "MASE" or "MASEs" (Default: "MAPE").
 
     - exclusions (Optional): restrictions on features in the same model (which variables should not be included in the same model);
         Default is '"exclusions": []', otherwise it should receive a list of lists containing the exclusion variables in the list.

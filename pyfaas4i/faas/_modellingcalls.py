@@ -20,7 +20,7 @@ def _get_url(extension: str) -> str:
     """
     Defines the endpoint for the data to be sent
     Args:
-        extension: Wheter to call the validation of modeling API
+        extension: Whether to call the validation of modeling API
     Returns:
         An url in the for of a string
     """
@@ -344,26 +344,32 @@ def _build_call(
                                                     proxies=proxies)
                 
                 validation_code =  validation_response.status_code
-                validation_response = json.loads(validation_response.text)
 
-                if validation_code in [200, 201, 202] and validation_response['status'] in [200, 201, 202]:
+                if validation_code not in [200, 201, 202]:
 
-                    if 'info' not in validation_response.keys() or 'error_list' not in validation_response['info'].keys() or len(validation_response['info']['error_list']) == 0:
-                        modelling_response = requests.post(url,
-                                                           json={'body': zipped_body,
-                                                                 'skip_validation': True},
-                                                           headers=headers,
-                                                           timeout=1200,
-                                                           proxies=proxies) 
-                        modelling_status = modelling_response.status_code
-                        modelling_response = json.loads(modelling_response.text)
-                        modelling_response['api_status_code'] = modelling_status
-                        
-                else:
                     modelling_response = {"info": "validation_error"}
 
-                    if validation_code not in [200, 201, 202]:
-                        validation_response = {'api_status': validation_code, 'api_content': validation_response}
+                    validation_response = {'api_status': validation_code, 'api_content': validation_response}
+                        
+                else:
+
+                    validation_response = json.loads(validation_response.text)
+
+                    if validation_response['status'] in [200, 201, 202]:
+                        
+                        if 'info' not in validation_response.keys() or 'error_list' not in validation_response['info'].keys() or len(validation_response['info']['error_list']) == 0:
+                            modelling_response = requests.post(url,
+                                                                json={'body': zipped_body,
+                                                                        'skip_validation': True},
+                                                                headers=headers,
+                                                                timeout=1200,
+                                                                proxies=proxies) 
+                            modelling_status = modelling_response.status_code
+                            modelling_response = json.loads(modelling_response.text)
+                            modelling_response['api_status_code'] = modelling_status
+                        
+                    else:
+                        modelling_response = {"info": "validation_error"}
 
 
             return [validation_response, modelling_response]
@@ -441,8 +447,6 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
                       proxy_url, proxy_port)
     req_status = req.status_code
 
-    api_response = json.loads(req.text)
-
     if req_status not in [200, 201, 202]:
         if req_status in [408, 504]:
             raise APIError(f"Status Code: {str(req_status)}. Content: Timeout.\nPlease try sending a smaller data_list.")
@@ -454,7 +458,9 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
             raise APIError(f"Status Code: {str(req_status)}. Content: {str(api_response)}.\nCheck if you have the latest version of this package and/or try again later.")
 
 
-    elif 'status' not in api_response:
+    api_response = json.loads(req.text)
+
+    if 'status' not in api_response:
         raise APIError(f"Status Code: {str(req_status)}. Content: {str(api_response)}.\nUnmapped internal error.")
 
     if api_response['status'] in [200, 201, 202]:
@@ -470,7 +476,7 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
 
         if "error_list" in api_response["info"].keys() and isinstance(
             api_response["info"]["error_list"], dict
-        ):
+            ) and api_response["info"]["error_list"]:
             print("\nError User Input:")
             error_list = api_response["info"]["error_list"]
 
@@ -484,7 +490,7 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
 
         if "warning_list" in api_response["info"].keys() and isinstance(
             api_response["info"]["warning_list"], dict
-        ):
+        ) and api_response["info"]["warning_list"]:
             print("\nWarning User Input:\n")
             warning_list = api_response["info"]["warning_list"]
 

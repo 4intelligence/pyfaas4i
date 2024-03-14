@@ -38,7 +38,9 @@ The package is supported by **Python 3** and requires the following packages:
 
 Then the package can be installed either by cloning the repository and executing the following command whist in the folder:
 ```bash
-python setup.py install
+python setup.py install --user
+# You might need to change to python3 depending on your configurations
+# Linux and Mac users might need to use 'sudo' in the beginning of the command
 ```
 Simply install it using pip:
 

@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import os
 import subprocess
-
+from sys import platform
 
 class forecast:
     """
@@ -63,6 +63,10 @@ class forecast:
         self.MAPE_list = None
         self.WMAPE = None
         self.WMAPE_list = None
+        self.MASE = None
+        self.MASE_list = None
+        self.MASEs = None
+        self.MASEs_list = None
         self.models = None
         self.infos = None
         self.data = None
@@ -95,7 +99,7 @@ class forecast:
             self.sample = pack[self._model]["sample"]
             self.transformation = pack[self._model]["transformation"]
 
-            for cv_metric in ["RMSE", "MPE", "MAPE"]:
+            for cv_metric in ["RMSE", "MPE", "MAPE", "WMAPE", "MASE", "MASEs"]:
                 try:
                     self.__setattr__(cv_metric, pack[self._model][cv_metric])
                 except:
@@ -104,10 +108,9 @@ class forecast:
             self.RMSE_list = pack[self._model]["RMSE_list"]
             self.MPE_list = pack[self._model]["MPE_list"]
             self.MAPE_list = pack[self._model]["MAPE_list"]
-
-            if "WMAPE" in pack[self._model].keys():
-                self.WMAPE = pack[self._model]["WMAPE"]
-                self.WMAPE_list = pack[self._model]["WMAPE_list"]
+            self.WMAPE_list = pack[self._model]["WMAPE_list"]
+            self.MASE_list = pack[self._model]["MASE_list"]
+            self.MASEs_list = pack[self._model]["MASEs_list"]
 
             if pack[self._model]["type"] == "ARIMA":
                 self.models = dict(
@@ -198,10 +201,14 @@ class forecast:
         """
 
         import importlib.resources as pkg_resources
-
         from subprocess import Popen, PIPE
 
-        proc = Popen(["which", "R"], stdout=PIPE, stderr=PIPE)
+        ## Check if the user is using Windows
+        if platform.startswith("win"):
+            proc = Popen(["where", "R"], stdout=PIPE, stderr=PIPE)
+        else:
+            proc = Popen(["which", "R"], stdout=PIPE, stderr=PIPE)
+        
         exit_code = proc.wait()
         if exit_code != 0:
             raise SystemError(
@@ -227,7 +234,7 @@ class forecast:
         except:
 
             raise SystemError(
-                "R and(or) the following packages are not installed: dplyr, jsonlite, lmtest, broom, randomForest, caret"
+                "R and(or) the following packages are not installed: dplyr, jsonlite, lmtest, randomForest, glment, caret"
             )
 
     @staticmethod
@@ -285,38 +292,25 @@ class forecast:
 
         else:
             models = [self.json[i]["type"] for i in range(len(self.json))]
-            mapes, mpes, rmses = [], [], []
+            mapes, mpes, rmses, wmapes, mase_s, mases_s = [], [], [], [], [], []
             for i in range(len(self.json)):
                 for metrics_list, cv_metrics in [
                     (mapes, "MAPE"),
+                    (wmapes, "WMAPE"),
                     (mpes, "MPE"),
                     (rmses, "RMSE"),
+                    (mase_s, "MASE"),
+                    (mases_s, "MASEs"),
                 ]:
                     try:
                         metrics_list.append(self.json[i][cv_metrics])
                     except:
                         metrics_list.append(np.NaN)
 
-            if "WMAPE" in self.json[0].keys():
-                wmapes = []
-                for i in range(len(self.json)):
-                    try:
-                        wmapes.append(self.json[i]["WMAPE"])
-                    except:
-                        wmapes.append(np.NaN)
-                desc_df = pd.DataFrame(
-                    {
-                        "Model Type": models,
-                        "MAPE": mapes,
-                        "WMAPE": wmapes,
-                        "MPE": mpes,
-                        "RMSE": rmses,
-                    }
-                )
-            else:
-                desc_df = pd.DataFrame(
-                    {"Model Type": models, "MAPE": mapes, "MPE": mpes, "RMSE": rmses}
-                )
+            desc_df = pd.DataFrame(
+                {"Model Type": models, "MAPE": mapes, "WMAPE": wmapes, 
+                 "MPE": mpes, "RMSE": rmses, "MASE": mase_s, "MASEs": mases_s}
+            )
 
         if summarise:
             desc_df["Model Type"] = desc_df["Model Type"].str.replace(
@@ -358,46 +352,33 @@ class forecast:
 
         else:
             models = [self.json[i]["type"] for i in range(len(self.json))]
-            mapes, mpes, rmses = [], [], []
+            mapes, mpes, rmses, wmapes, mase_s, mases_s = [], [], [], [], [], []
             for i in range(len(self.json)):
                 for metrics_list, cv_metrics in [
                     (mapes, "MAPE"),
                     (mpes, "MPE"),
                     (rmses, "RMSE"),
+                    (wmapes, "WMAPE"),
+                    (mase_s, "MASE"),
+                    (mases_s, "MASEs"),
                 ]:
                     try:
                         metrics_list.append(self.json[i][cv_metrics])
                     except:
                         metrics_list.append(np.NaN)
-
-            if "WMAPE" in self.json[0].keys():
-                wmapes = []
-                for i in range(len(self.json)):
-                    try:
-                        wmapes.append(self.json[i]["WMAPE"])
-                    except:
-                        wmapes.append(np.NaN)
-
-                m_list = pd.DataFrame(
-                    {
-                        "Model": [x for x in range(len(self.json))],
-                        "Model Type": models,
-                        "MAPE": mapes,
-                        "WMAPE": wmapes,
-                        "MPE": mpes,
-                        "RMSE": rmses,
-                    }
-                )
-            else:
-                m_list = pd.DataFrame(
-                    {
-                        "Model": [x for x in range(len(self.json))],
-                        "Model Type": models,
-                        "MAPE": mapes,
-                        "MPE": mpes,
-                        "RMSE": rmses,
-                    }
-                )
+            
+            m_list = pd.DataFrame(
+                {
+                    "Model": [x for x in range(len(self.json))],
+                    "Model Type": models,
+                    "MAPE": mapes,
+                    "WMAPE": wmapes,
+                    "MPE": mpes,
+                    "RMSE": rmses,
+                    "MASE": mase_s,
+                    "MASEs": mases_s
+                }
+            )
 
             if metric:
                 m_list = m_list.sort_values(metric, ascending=True).head(n_best)
@@ -424,11 +405,20 @@ class forecast:
             )
 
 
-def install_R():
-
+def install_R_packages(cran_mirror: str = "http://cran.us.r-project.org"):
+    
+    """
+    Args:
+        cran_mirror: String variable holding the URL of the preferred CRAN mirror  
+    """
     from subprocess import Popen, PIPE
 
-    proc = Popen(["which", "R"], stdout=PIPE, stderr=PIPE)
+    ## Check if the user is using Windows
+    if platform.startswith("win"):
+        proc = Popen(["where", "R"], stdout=PIPE, stderr=PIPE)
+    else:
+        proc = Popen(["which", "R"], stdout=PIPE, stderr=PIPE)
+    
     exit_code = proc.wait()
     if exit_code != 0:
         raise SystemError(
@@ -437,8 +427,15 @@ def install_R():
 
     print("Starting installation")
 
-    install_command = "install.packages(c('dplyr', 'jsonlite', 'lmtest', 'broom', 'randomForest', 'caret'))"
-    os.system(f"Rscript -e {install_command}")
+    def install_if_needed(package_name: str):
+        return f"if (!require('{package_name}')) install.packages('{package_name}', repos='{cran_mirror}')"
+
+    os.system(f'Rscript -e "{install_if_needed("dplyr")}"')
+    os.system(f'Rscript -e "{install_if_needed("jsonlite")}"')
+    os.system(f'Rscript -e "{install_if_needed("lmtest")}"')
+    os.system(f'Rscript -e "{install_if_needed("randomForest")}"')
+    os.system(f'Rscript -e "{install_if_needed("glmnet")}"')
+    os.system(f'Rscript -e "{install_if_needed("caret")}"')
 
     print('Packages have been installed')
 
