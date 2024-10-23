@@ -31,6 +31,8 @@ get_json <- function(data) {
   infos_list <- list()
 
   new_pck <- fct_pck
+  
+  tree_models <- c("RandomForest", "LGBM", "GradientBoosting","XGBoost")
 
   for (i in 1:length(fct_pck[[1]])) {
     temp <- fct_pck %>% dplyr::slice(i)
@@ -50,11 +52,19 @@ get_json <- function(data) {
 
         freq <- arima_order[["freq"]]
 
+        ## Uma nova literatura sugere que df = p+q
+        ## Vide https://robjhyndman.com/hyndsight/ljung_box_df.html
         df <- arima_order[["p"]] + arima_order[["q"]]
 
 
         lag <- ifelse(freq > 1, 2 * freq, 10)
 
+        ## Dividimos o numero de linhas por 2,5 considerando que o lag
+        ## acima e o cálculo se igualam para uma amostra de 60 pontos
+        ## para o caso mensal, que consideramos 36 como o número mínimo de 
+        ## pontos para o cálculo de correlação. 
+        ## Ex.: Se o lag for 24 e tivermos 60 observações, para o cálculo
+        ## da correlação do lag 24 teremos 36 pontos.
         lag <- min(lag, floor(nrow(residuals)/2.5))
         lag <- max(1, lag)
 
@@ -78,10 +88,17 @@ get_json <- function(data) {
         list_breakdown <- list("breakdown" = infos_dataframe)
         infos_list[[i]] <- c(infos_list[[i]], list_breakdown)
       }
-    } else if (temp$type == "RandomForest") {
-      features <- randomForest::importance(temp_model)
-      coefs_list[[i]] <- features %>% as.data.frame(row.names = rownames(features), col.names = colnames(features))
+    } else if (temp$type %in% tree_models) {
       infos_list[[i]] <- temp_type
+      if (!is.null(temp_model)) {
+        features <- randomForest::importance(temp_model)
+        coefs_list[[i]] <- features %>% as.data.frame(row.names = rownames(features), col.names = colnames(features))
+      } else {
+        coefs_list[[i]] <- temp_type[["importance"]]
+        # Then we drop importance from infos_list
+        infos_list[[i]] <- infos_list[[i]][names(infos_list[[i]]) != "importance"]
+      }
+      
     } else if (temp$type %in% c("Lasso", "Ridge", "ElasticNet", "LM")) {
       infos_list[[i]] <- temp$infos[[1]]
 
