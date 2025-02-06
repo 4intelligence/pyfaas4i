@@ -74,6 +74,7 @@ def _check_model_spec(model_spec: dict, column_list: list) -> dict:
         },
         "lags": {},
         "allowdrift": [True],
+        "allowoutliers": [True],
         "user_model": [[]]
     }
 
@@ -103,6 +104,7 @@ def _build_call(
     date_format: str,
     model_spec: dict,
     project_id: str,
+    user_model: dict,
     skip_validation: bool,
     version_check: bool,
     extension: str,
@@ -120,6 +122,7 @@ def _build_call(
                     (See https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
         model_spec: dictionary containing arguments required by the API
         project_id: name of the project defined by the user
+        user_model: dictionary with the response variable names and their respective model specifications and constraints
         skip_validation: if the validation step should be bypassed
         extension: Wheter to call the validation of modeling API
         proxy_url: A proxy for URL during the request
@@ -158,6 +161,9 @@ def _build_call(
     long_variable_name = []
     regex_special_chars = re.compile('[@!#$%^&*()<>?/\\|}{~:\[\].-]')
     columns_list = []
+
+    # Formatting data_list to include only 6 decimal places
+    data_list = {k: v.round(6) for k, v in data_list.items()} 
 
     # Formatting date_variable and keeping the original value for checking
     orig_date_variable = date_variable
@@ -211,6 +217,15 @@ def _build_call(
         raise KeyError(
             f"At least one variable name longer than 50 characters found in dataframe(s): {' '.join([str(x) for x in long_variable_name])}"
         )
+    
+    # Check if all y's on user_model are in data_list
+    _data_list_keys = data_list.keys()
+    _user_model_keys = user_model.keys()
+    ys_not_int_data_list = list(set(_user_model_keys) - set(_data_list_keys))
+    if len(ys_not_int_data_list) != 0:
+        raise KeyError(
+            f"Some keys in user model are not in the original data: {' '.join(ys_not_int_data_list)}"
+        )
 
     # ------ Convert dict to list -----------------------------
     position = 1
@@ -218,6 +233,11 @@ def _build_call(
     for key in list(data_list.keys()):
         data_list[key] = [x for x in data_list[key].values()]
         data_list[f"forecast_{position}_" + regex_special_chars.sub('_', unidecode(key.lower()))] = data_list.pop(key)
+        
+        # ------ renaming Y to `forecast_#_Y` ------ 
+        if key in user_model.keys():
+            user_model[f"forecast_{position}_" + regex_special_chars.sub('_', unidecode(key.lower()))] = user_model.pop(key)
+        
         position += 1
 
 
@@ -265,6 +285,27 @@ def _build_call(
                 temp_user_model.append(temp_j)
         formatted_model_spec["user_model"] = temp_user_model
 
+    if user_model:
+        for models in user_model.values():
+            for model in models:
+                # ------ removing vars' accentuation and special characters ------ 
+                model["vars"] = [regex_special_chars.sub('_', unidecode(v.lower())) for v in model["vars"]]
+
+                # ------ Turning None into "NA" to make compatible with 'R' scripts ------ 
+                if 'order' in model.keys():
+                    model["order"] = ["NA" if x is None else x for x in model["order"]]
+
+                if "constraints" not in model.keys():
+                    continue
+
+                new_constraints = {}
+
+                # ------ removing constraints' accentuation and special characters ------ 
+                for constraint_name, constraint_values in model["constraints"].items():
+                    _constraint_values_str = [str(x) for x in constraint_values]
+                    new_constraints[regex_special_chars.sub('_', unidecode(constraint_name.lower()))] = _constraint_values_str
+                model["constraints"] = new_constraints
+
     # ----- Change formatted_model_spec to be R compatible
     for key in formatted_model_spec.keys():
         if key == "selection_methods":
@@ -286,6 +327,7 @@ def _build_call(
         "project_id": [project_id],
         "date_variable": [date_variable],
         "date_format": [date_format],
+        "user_model": user_model
     }
     
     # ----- Get the designated url ----------------------------------
@@ -398,6 +440,7 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
                     date_format: str,
                     model_spec: dict,
                     project_name: str,
+                    user_model: dict = {},
                     **kwargs):
     '''
     This function directs the _build_call function to the validation API
@@ -408,7 +451,7 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
                     (See https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
         model_spec: dictionary containing arguments required by the API
         project_name: name of the project defined by the user, that should be at most 50 characters long
-        skip_validation: if the validation step should be bypassed
+        user_model: dictionary with the response variable names and their respective model specifications and constraints
 
     Returns:
         If successfully received, returns the API's return code and email address to which the results
@@ -442,7 +485,8 @@ def validate_models(data_list: Dict[str, pd.DataFrame],
 
     req = _build_call(data_list, date_variable,
                       date_format, model_spec,
-                      project_name, skip_validation,
+                      project_name, user_model,
+                      skip_validation,
                       version_check, 'validate',
                       proxy_url, proxy_port)
     req_status = req.status_code
@@ -506,6 +550,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
                date_format: str,
                model_spec: dict,
                project_name: str,
+               user_model: dict = {},
                **kwargs) -> str:
     '''
 
@@ -517,7 +562,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
                     (See https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior)
         model_spec: dictionary containing arguments required by the API
         project_name: name of the project defined by the user, that should be at most 50 characters long
-        skip_validation: if the validation step should be bypassed
+        user_model: dictionary with the response variable names and their respective model specifications and constraints
 
     Returns:
         If successfully received, returns the API's return code and email address to which the results
@@ -553,7 +598,8 @@ def run_models(data_list: Dict[str, pd.DataFrame],
 
     req = _build_call(data_list, date_variable, 
                       date_format, model_spec,
-                      project_name, skip_validation,
+                      project_name, user_model,
+                      skip_validation,
                       version_check, 'projects',
                       proxy_url, proxy_port)
     api_response_validation = req[0]

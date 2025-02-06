@@ -4,6 +4,10 @@ PyFaaS4i - FaaS API modeling with Python
 ![Python](https://img.shields.io/badge/python-3.6|3.7|3.8|3.9-blue.svg) ![License: MPL
 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)
 
+<style>
+  r {background-color: #ff0000fa}
+</style>
+
 **Repository for running scale modeling on FaaS from Python**
 
 
@@ -224,9 +228,10 @@ the user:
 
     - Can be set to True or False.
 
-  - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
+  - **allowoutliers**: if True, the inclusion of outlier variables in models is allowed;
 
-    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+    - Can be set to True or False.
+
 <br>
 
 The critical input we expect from users is the CV settings (n\_steps and
@@ -252,7 +257,7 @@ model_spec = {
               'n_windows': user_input,
               'log': True,
               'seas.d': True,
-              'n_best': 25,
+              'n_best': 20,
               'accuracy_crit': 'MAPE',
               'exclusions': [],
               'golden_variables': [],
@@ -266,7 +271,7 @@ model_spec = {
                   },
               'lags': {},
               'allowdrift': True,
-              'user_model': []    
+              'allowoutliers': True
               }
 ```
 
@@ -282,14 +287,74 @@ characters will be removed.
 project_name = 'project_example'
 ```
 
+#### 6\) User model \['user\_model'\]
+
+The definition of a model (or more than one) that user wants to see among the ARIMA models available in the plataform. The user can set the variables it wants in the model, the ARIMA order and the variables constraints.  
+By default, the `user_model` parameter is an empty dictionary, to define a user model it is necessary to create a dictionary in which the keys are the response variable names and the values are lists of specifications, as described below.  
+Each user model may contain the following parameters:
+- **vars**: A list with the names of the explanatory variables the user wants in the customized model;
+- **order** (Optional): A list with the ARIMA order [p, d, q] of the customized model. Such list should always be of length 3, but the user can define as 'None' the ARIMA terms that should be estimated freely, for example [None, 1, None] indicates that the ARIMA should be differenced, but `p` and `q` are free to be optimized. Users have the flexibility to specify all `p`, `d` and `q`, only `d` (in this case, `p` and `q` should be set to None) or only `p` and `q` (in this case, `d` should be set to None);
+- **constraints** (Optional): A dictionary with the variables (as keys) and constraints that the user wish to impose in the coefficients of this model. It is possible to set a specific value or a range of values, for 1 or more variables in **vars**;
+  - At least one variable set on `vars` must be free of constraints;
+  - It is also possible to add constraints to the intercept, which should be defined as the other variables, matching the name **intercept**;
+  - If a constraint such as greater than 0 is needed, it can be defined as [0, inf], similarly, for constraints that are less than 0, the format is [-inf, 0].
+```python
+# defining an user_model for one Y
+user_model = {
+  "fs_pim": [
+    {
+      "vars": ["fs_ici", "fs_pmc", "fs_pop_des"],
+      "order": [None, 0, None],
+      "constraints": {
+        "intercept": [3],
+        "fs_ici": [0, float("inf")],
+        "fs_pmc": [-1, 1]
+      }
+    }, # user model 1 for dataset_1
+  ]
+}
+
+# defining an user_model for multiple Y
+user_model = {
+  "fs_pim": [
+    {
+      "vars": ["fs_ici", "fs_pmc", "fs_pop_des"],
+      "order": [None, 0, None],
+      "constraints": {
+        "intercept": [3],
+        "fs_ici": [0, float("inf")],
+        "fs_pmc": [-1, 1]
+      }
+    }, # user model 1 for dataset_1
+    {
+      "vars": ["fs_ici", "fs_pmc"],
+      "order": [1, 1, 1],
+      "constraints": {
+        "fs_ici": [0.5]
+      }
+    }, # user model 2 for dataset_1
+  ],
+  "fs_pib": [
+    {
+      "vars": ["fs_ici", "fs_pim", "fs_pop_ea"],
+      "order": [None, None, None],
+      "constraints": {
+        "intercept": [0],
+        "fs_ici": [0, float("inf")],
+        "fs_pim": [-1,1]
+      }
+    }, # user model 1 for dataset_3
+  ]
+}
+```
 
 
-#### 6\) Send job request
+#### 7\) Send job request
 
 Wants to make sure everything is alright? Though not necessary, you can validate your request beforehand by using the following function:
 
 ``` python
-validate_models(data_list, date_variable, date_format, model_spec, project_name)
+validate_models(data_list, date_variable, date_format, model_spec, project_name, user_model)
 ```
 
 It will return a message indicating your specifications are in order or it will point out to the arguments that need adjustment.
@@ -297,7 +362,7 @@ It will return a message indicating your specifications are in order or it will 
 Or you can simply send your **FaaS API** request. We'll take care of running the validate_request and let you know if something needs your attention before we can proceed. If everything is in order, we'll automatically send the request, and you will see a message with the status of your request in your console.
 
 ``` python
-run_models(data_list, date_variable, date_format, model_spec, project_name)
+run_models(data_list, date_variable, date_format, model_spec, project_name, user_model)
 ```
 
 If everything went fine you should see the following message:
@@ -327,7 +392,7 @@ model_spec = {
     'seas.d': True,
     'n_steps': 3,
     'n_windows': 6,
-    'n_best': 25,
+    'n_best': 20,
     'accuracy_crit': 'RMSE',
     'exclusions': [["fs_massa_real", "fs_rend_medio"],
                   ["fs_pop_ea", "fs_pop_des", "fs_pop_ocu"]],
@@ -343,8 +408,7 @@ model_spec = {
     'lags': {"fs_rend_medio": [1,2,3],
              "fs_pmc": [1,2,3]},
     'allowdrift': False,
-    'user_model': [["fs_massa_real", "l2_fs_pmc"],
-                   ["fs_rend_medio"]]
+    'allowoutliers': True
     }
 ```
 
@@ -418,15 +482,6 @@ The **lags** defines dictionary of lags of explanatory variables to be tested in
 ``` python
 'lags': {"fs_rend_medio": [1,2,3],
          "fs_pmc": [1,2,3]}
-```
-
-<br>
-
-The **user_model** defines one or more models that should be included in the available models. Besides these variables, any variable that is added to regular modeling will also be in the models created from **user_model**. It is also possible to include a lagged variable (if defined in **lags**) among the variables in **user_model**. For example, we expect to see a model that includes only 'fs_massa_real', the second lag of 'fs_pmc' and the variables added within the pipeline, no other explanatory variable.
-
-``` python
-'user_model': [["fs_massa_real", "l2_fs_pmc"],
-               ["fs_rend_medio"]]
 ```
 
 <br>

@@ -13,6 +13,26 @@ suppressMessages({
 tidy_coef <- function(model) {
 
   coefs <- lmtest::coeftest(model)[, 1:4, drop = FALSE]
+
+  ## Para modelos com parametros fixos, o coeftest não retorna os coeficientes
+  ## relativos as variáveis com coeficientes fixos e sd 0, nesse caso, adicionamos
+  ## os parâmetros ao dataframe
+  fixed_terms <- names(coef(model))[! names(coef(model)) %in% rownames(coefs)]
+  if (length(fixed_terms) > 0) {
+    extra_coefs <- as.data.frame(coef(model))
+    extra_coefs <- extra_coefs[match(fixed_terms, rownames(extra_coefs)), ,
+                               drop = FALSE]
+    names(extra_coefs) <- "Estimate"
+    extra_coefs[["Std. Error"]] <- 0
+    extra_coefs[["z value"]] <- NA
+    extra_coefs[["Pr(>|z|)"]] <- NA
+    
+    coefs <- rbind(coefs, extra_coefs)
+    
+    ## Ordenando as variáveis
+    coefs <- coefs[match(names(coef(model)), rownames(coefs)), , drop = FALSE]
+  }
+
   coefs <- data.frame(term = rownames(coefs),
                      coefs, row.names = NULL)
   names(coefs) <- c("term", "estimate", "std.error", "statistic", "p.value")

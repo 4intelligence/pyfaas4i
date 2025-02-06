@@ -63,13 +63,25 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
 
         - Can be set to True or False.
 
-    - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
+    - allowoutliers: if True, the inclusion of outlier variables in models is allowed;
 
-    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+        - Can be set to True or False.
     
 - **project_name: str**
 
     Name of the project defined by the user, that should be at most 50 characters long
+
+- **user_model: dict**
+
+    The definition of a model (or more than one) that user wants to see among the ARIMA models available in the plataform. The user can set the variables it wants in the model, the ARIMA order and the variables constraints.  
+    By default, the `user_model` parameter is an empty dictionary, to define a user model it is necessary to create a dictionary in which the keys are the response variable names and the values are lists of specifications, as described below.  
+    Each user model may contain the following parameters:
+    - **vars**: A list with the names of the explanatory variables the user wants in the customized model;
+    - **order** (Optional): A list with the ARIMA order [p, d, q] of the customized model. Such list should always be of length 3, but the user can define as 'None' the ARIMA terms that should be estimated freely, for example [None, 1, None] indicates that the ARIMA should be differenced, but p and q are free to be optimized;
+    - **constraints** (Optional): A dictionary with the variables (as keys) and constraints that the user wish to impose in the coefficients of this model. It is possible to set a specific value or a range of values, for 1 or more variables in **vars**;
+        - At least one variable set on `vars` must be free of constraints;
+        - It is also possible to add constraints to the intercept, which should be defined as the other variables, matching the name **intercept**;
+        - If a constraint such as greater than 0 is needed, it can be defined as [0, inf], similarly, for constraints that are less than 0, the format is [-inf, 0].
 
 **Returns**: 
     API return code, and errors and/or warnings if any were found.
@@ -77,7 +89,7 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) validation API.
 
 
 ## faas.run_models()
-**function <span style="color:orange">run_models</span>.(data_list, date_variable, date_format, model_spec, project_name, skip_validation= False)**
+**function <span style="color:orange">run_models</span>.(data_list, date_variable, date_format, model_spec, project_name)**
 
 Sends a request to 4intelligence's Forecast as a Service (FaaS) for modeling.
 
@@ -135,17 +147,29 @@ Sends a request to 4intelligence's Forecast as a Service (FaaS) for modeling.
 
     - lags (Optional): defines dictionary of lags of explanatory variables to be tested in dataset. For example, if you wish to apply lags 1, 2 and 3 to the explanatory variables 'x1' and 'x2' from your dataset, this parameter should be specified as "lags": {"x1": [1,2,3], "x2": [1,2,3]}. However, if you wish to test lags 1, 2 and 3 for all explanatory variables in the dataset(s), you can define as "lags": {"all": [1,2,3]}. If, for example the user defines "lags": {"all": [1,2,3], "x1": [1,2,3,4,5,6]}, lags 1, 2 and 3 will be applied to all explanatory variables, except for 'x1', which lags 1 through 6 will be tested. The default is "lags": {}.
 
-    - **user_model**: definition of a model (or more than one) that user wants to see among the ones available in output;
+    - allowdrift (Optional): if True, drift terms are considered in arima models;
 
-    - If none, should be passed as an empty list ("user_model": [] or "user_model": list()), otherwise it should receive a list containing lists of variables (see advanced options below for examples).
+        - Can be set to True or False.
+
+    - allowoutliers: if True, the inclusion of outlier variables in models is allowed;
+
+        - Can be set to True or False.
 
 - **project_name: str**
 
     Name of the project defined by the user, that should be at most 50 characters long
 
-- **skip_validation: bool**
+- **user_model: dict**
 
-    If the validation step should be bypassed
+    The definition of a model (or more than one) that user wants to see among the ARIMA models available in the plataform. The user can set the variables it wants in the model, the ARIMA order and the variables constraints.  
+    By default, the `user_model` parameter is an empty dictionary, to define a user model it is necessary to create a dictionary in which the keys are the response variable names and the values are lists of specifications, as described below.  
+    Each user model may contain the following parameters:
+    - **vars**: A list with the names of the explanatory variables the user wants in the customized model;
+    - **order** (Optional): A list with the ARIMA order [p, d, q] of the customized model. Such list should always be of length 3, but the user can define as 'None' the ARIMA terms that should be estimated freely, for example [None, 1, None] indicates that the ARIMA should be differenced, but p and q are free to be optimized;
+    - **constraints** (Optional): A dictionary with the variables (as keys) and constraints that the user wish to impose in the coefficients of this model. It is possible to set a specific value or a range of values, for 1 or more variables in **vars**;
+        - At least one variable set on `vars` must be free of constraints;
+        - It is also possible to add constraints to the intercept, which should be defined as the other variables, matching the name **intercept**;
+        - If a constraint such as greater than 0 is needed, it can be defined as [0, inf], similarly, for constraints that are less than 0, the format is [-inf, 0].
 
 **Returns**: 
     API return code, and errors and/or warnings if any were found.
