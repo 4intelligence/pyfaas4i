@@ -551,6 +551,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
                model_spec: dict,
                project_name: str,
                user_model: dict = {},
+               get_project_id: bool = False,
                **kwargs) -> str:
     '''
 
@@ -563,6 +564,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
         model_spec: dictionary containing arguments required by the API
         project_name: name of the project defined by the user, that should be at most 50 characters long
         user_model: dictionary with the response variable names and their respective model specifications and constraints
+        get_project_id: if True, returns the project ID when the request is successful
 
     Returns:
         If successfully received, returns the API's return code and email address to which the results
@@ -674,7 +676,8 @@ def run_models(data_list: Dict[str, pd.DataFrame],
                 print(
                     f"HTTP: {api_response_modelling['status']}: Request successfully received!\nResults will soon be available in your Projects module."
                 )
-
+                if get_project_id:
+                    return api_response_modelling["id"]
             else: # if the error was returned in the status inside the API
                 if api_response_modelling["status"] in [408, 504]:
                     raise APIError(f"Status Code: {str(api_response_modelling['status'])}. Content: Timeout.\nPlease try sending a smaller data_list.")

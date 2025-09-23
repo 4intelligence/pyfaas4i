@@ -230,11 +230,14 @@ def download_zip(
     return response.status_code
 
 
-def list_projects(return_dict: bool = False, **kwargs):
+def list_projects(
+        project_id: str = None,
+        return_dict: bool = False, **kwargs):
     """
     Retrieves a list of projects previously sent to FaaS that belongs to the user
 
     Args:
+        project_id: if provided, retrieves information for a specific project
         return_dict: if a dictionary should be returned instead of a dataframe
     Returns:
         project_dict: dataframe or dictionary with information regarding the user projects
@@ -280,10 +283,15 @@ def list_projects(return_dict: bool = False, **kwargs):
 
     headers["authorization"] = f"Bearer {access_token}"
     headers["user-agent"] = FOURI_USER_AGENT
+
+    url = "https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects"
+
+    if project_id:
+        url += f"/{project_id}"
     
     try:
         response = requests.get(
-            url="https://run-prod-4casthub-faas-modelling-api-zdfk3g7cpq-ue.a.run.app/api/v1/projects",
+            url=url,
             timeout=1200,
             headers=headers,
             proxies=proxies
@@ -294,7 +302,10 @@ def list_projects(return_dict: bool = False, **kwargs):
     if response.status_code == 401:
         raise AuthenticationError()
 
-    project_dict = json.loads(response.text)["records"]
+    if project_id:
+        project_dict = [json.loads(response.text)]
+    else:
+        project_dict = json.loads(response.text)["records"]
     if return_dict:
         return project_dict
     else:

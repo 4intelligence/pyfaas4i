@@ -59,23 +59,25 @@ get_json <- function(data) {
     temp_model <- temp$models[[1]]
     temp_type <- temp$infos[[1]]
 
-    if (temp$type %in% c("ARIMA", "auto.arima", "ARIMA_SEASM", "ARIMA_SEASD", "ARIMA_UNIV")) {
+    if (temp$type %in% c("ARIMA", "OLS", "auto.arima", "ARIMA_SEASM", "ARIMA_SEASD", "ARIMA_UNIV")) {
       residuals <- stats::residuals(temp_model) %>% as_tibble()
 
       if (length(temp_model$coef) == 0) {
         coefs_list[[i]] <- list("residuals" = residuals, "Ljung" = NA)
       } else {
         coef <- tidy_coef(temp_model)
+        freq <- temp$infos[[1]]$freq_num
 
-        arima_order <- temp_model[["arma"]][c(1, 6, 2, 3, 7, 4, 5)]
-        names(arima_order) <- c("p", "d", "q", "P", "D", "Q", "freq")
+        if (temp$type != "OLS") {
+          arima_order <- temp_model[["arma"]][c(1, 6, 2, 3, 7, 4, 5)]
+          names(arima_order) <- c("p", "d", "q", "P", "D", "Q", "freq")
 
-        freq <- arima_order[["freq"]]
-
-        ## Uma nova literatura sugere que df = p+q
-        ## Vide https://robjhyndman.com/hyndsight/ljung_box_df.html
-        df <- arima_order[["p"]] + arima_order[["q"]]
-
+          ## Uma nova literatura sugere que df = p+q
+          ## Vide https://robjhyndman.com/hyndsight/ljung_box_df.html
+          df <- arima_order[["p"]] + arima_order[["q"]]
+        } else {
+          df <- 0
+        }
 
         lag <- ifelse(freq > 1, 2 * freq, 10)
 
@@ -98,7 +100,10 @@ get_json <- function(data) {
 
       get_infos <- temp_type
       get_infos["breakdown"] <- NULL
-      names(get_infos)[which(names(get_infos) == "arimaorder")] <- "arima_order"
+
+      if (temp$type != "OLS") {
+        names(get_infos)[which(names(get_infos) == "arimaorder")] <- "arima_order"
+      }
 
       infos_list[[i]] <- get_infos
 

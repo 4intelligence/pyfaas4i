@@ -1,15 +1,10 @@
 PyFaaS4i - FaaS API modeling with Python
 ================
 
-![Python](https://img.shields.io/badge/python-3.6|3.7|3.8|3.9-blue.svg) ![License: MPL
+![Python](https://img.shields.io/badge/python-3.11-blue.svg) ![License: MPL
 2.0](https://img.shields.io/badge/License-MPL%202.0-brightgreen.svg)
 
-<style>
-  r {background-color: #ff0000fa}
-</style>
-
 **Repository for running scale modeling on FaaS from Python**
-
 
 Repository under license [Mozilla Public
 Version 2.0](https://www.mozilla.org/en-US/MPL/2.0/).

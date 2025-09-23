@@ -4,7 +4,7 @@ with open('requirements.txt') as f:
     required = f.read().splitlines()
 setuptools.setup(
     name='pyfaas4i',
-    version='1.8.0',
+    version='1.9.0',
     packages=setuptools.find_packages(),
     author='4intelligence',
     author_email='n.araujo@4intelligence.ai',
