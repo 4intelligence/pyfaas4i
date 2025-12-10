@@ -127,7 +127,7 @@ get_json <- function(data) {
     } else if (temp$type %in% c("Lasso", "Ridge", "ElasticNet", "LM")) {
       infos_list[[i]] <- temp$infos[[1]]
 
-      is_v5 <- FALSE
+      is_v5 <- FALSE ## If false, it is less than v5, if true, it is v5 or higher
       if (! "finalModel" %in% names(temp_model)) {
         
         is_v5 <- TRUE
@@ -149,31 +149,31 @@ get_json <- function(data) {
         temp$models[[1]][["bestTune"]] <- bestTune
       }
 
-      if (temp$type != "LM") {
-        feats <- temp_model$finalModel
+      feats <- temp_model$finalModel
 
-        coef_imp <- stats::coef(temp_model$finalModel, s = temp_model$bestTune$lambda)
+      coef_imp <- stats::coef(temp_model$finalModel, s = temp_model$bestTune$lambda)
 
-        if (!is.null(coef_imp)) {
-          coef_imp <- coef_imp %>%
-            as.matrix() %>%
-            as.data.frame()
-        }
+      if (!is.null(coef_imp)) {
+        coef_imp <- coef_imp %>%
+          as.matrix() %>%
+          as.data.frame()
+      }
+
+      if (is_v5) {
+        varimp <- caret::varImp(temp_model, scale = F, lambda = temp_model$bestTune$lambda) %>% 
+          as.data.frame()
 
         plot <- list("y" = feats$beta %>% as.matrix() %>% as.data.frame(), "x" = feats$dev.ratio)
-        
-        if (is_v5) {
-          varimp <- caret::varImp(temp_model, scale = F, lambda = temp_model$bestTune$lambda) %>% 
-            as.data.frame()
-        } else {
-          varimp <- caret::varImp(temp_model, scale = F)
-          varimp <- varimp$importance %>% as.data.frame()
-        }
-
-        coefs_list[[i]] <- list("bestTune" = temp_model$bestTune %>% as.data.frame(), "plot" = plot, "coef" = coef_imp, "varImp" = varimp)
       } else {
-        coefs_list[[i]] <- list("bestTune" = temp$models[[1]]$bestTune %>% as.data.frame())
+        varimp <- caret::varImp(temp_model, scale = F)
+        varimp <- varimp$importance %>% as.data.frame()
+
+        # Plot works differently in older versions
+        plot <- NA
       }
+
+      coefs_list[[i]] <- list("bestTune" = temp_model$bestTune %>% as.data.frame(), "plot" = plot, "coef" = coef_imp, "varImp" = varimp)
+
     } else if (grepl("comb", temp$type, fixed = TRUE)) {
       coefs_list[[i]] <- character(0)
       infos_list[[i]] <- list(

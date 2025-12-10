@@ -137,6 +137,10 @@ def _build_call(
     # ---- Check project_id length
     if len(project_id) > 50:
         raise ValueError("The project_name should be at most 50 characters long.")
+    
+    # ---- Check if data_list is empty
+    if not data_list:
+        raise ValueError("The data_list should contain at least one named dataframe.")
 
     data_list = data_list.copy()
     formatted_model_spec = copy.deepcopy(model_spec)
