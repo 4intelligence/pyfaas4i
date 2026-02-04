@@ -16,13 +16,6 @@ It is presented one case example for modeling one target variable (Y),
 using one dataset, and another one with multiple target variables (Y),
 which uses a list of datasets.
 
-## Autentication
-
-Each user will need to setup the authentication using the **login** function (*pyfaas4i.faas.login*). The function login will display a URI where 4CastHub's user email and password will be required, as well as the two-factor-authentication code.
-```python
-from pyfaas4i.faas import login
-login()
-```
 By default, the login function will wait 90 seconds for authentication. If you wish to adjust the wait time, it is possible to change the parameter using a numeric value for **sleep_time**.
 
 ## I) How it works
@@ -33,38 +26,43 @@ The package is supported by **Python 3** and requires the following packages:
 * pandas
 * requests
 * unidecode
+* setuptools
+* openpyxl
 
+## Important Note for Windows Users
 
-Then the package can be installed either by cloning the repository and executing the following command whist in the folder:
+If you are using PowerShell in Windows, it might be necessary to add `python -m` or `python3 -m` before all commands that start with `pip`. Please ensure to adjust your commands accordingly to avoid any issues during installation. 
+
+## Installation 
+
+You can install the package directly using the following command:
+
 ```bash
-python setup.py install --user
-# You might need to change to python3 depending on your configurations
-# Linux and Mac users might need to use 'sudo' in the beginning of the command
-```
-Simply install it using pip:
-
-```python
 pip install git+https://github.com/4intelligence/pyfaas4i.git
 ```
 
-#### Reading Excel files (.xlsx)
-Note that an additional package is needed for reading .xlsx files, the **openpyxl** package. It can be installed with one following:
+Alternatively, you can clone the repository or download the zip file and execute the following command while in the folder:
 
-* Installing in an Anaconda environment:
 ```bash
-conda install -c anaconda openpyxl 
+python -m pip install -e .
+# You might need to change to python3 depending on your configurations
+# Linux and Mac users might need to use 'sudo' in the beginning of the command
+```
+This will install the PyFaas4i package and all necessary dependencies for the package to function correctly.
+
+## Authentication
+
+Each user will need to setup the authentication using the **login** function (*pyfaas4i.faas.login*). The function login will display a URI where 4CastHub's user email and password will be required, as well as the two-factor-authentication code.
+```python
+from pyfaas4i.faas import login
+login()
 ```
 
-* Installing using PIP:
-```bash
-pip install openpyxl
+Once you log in, you can refresh your login within 30 days using the `refresh_login` function. This allows you to maintain your session without needing to log in again, ensuring a seamless experience.
+```python
+from pyfaas4i.faas import refresh_login
+refresh_login()
 ```
-
-* Inside a Jupyter Notebook:
-```bash
-!pip install openpyxl
-```
-The package is required only if you are reading .xlsx files or want to follow the tutorial.
 
 ## Documentation
 
@@ -142,9 +140,9 @@ date_variable = 'data_tidy'
 date_format = '%Y-%m-%d'
 
 # ------ Dataframes must be passed in a dictionary
-data_list = {'dataset_1': dataset_1,
-             'dataset_2': dataset_2,
-             'dataset_3': dataset_3}
+data_list = {'fs_pim': dataset_1,
+             'fs_pmc': dataset_2,
+             'fs_pib': dataset_3}
 ```
 
 <br>
@@ -187,12 +185,12 @@ the user:
 
     - n_windows should be an integer greater than or equal to 1. It is recommended that 'n_steps+n_windows-1' does not exceed 30% of the length of your data.
 
-  - **seas.d**: if TRUE, it includes seasonal dummies in every
+  - **seas.d**: if True, it includes seasonal dummies in every
     estimation;
 
     - Can be set to True or False.
 
-  - **log**: if TRUE apply log transformation to the data (only variables with all values greater than 0 will be log transformed);
+  - **log**: if True apply log transformation to the data (only variables with all values greater than 0 will be log transformed);
 
     - Can be set to True or False.
 
@@ -262,7 +260,7 @@ model_spec = {
                   'lasso' : True,
                   'rf' : True,
                   'corr' : True,
-                  'apply.collinear' : ["corr","rf","lasso","no_reduction"]
+                  'apply.collinear' : True
                   },
               'lags': {},
               'allowdrift': True,
@@ -282,7 +280,9 @@ characters will be removed.
 project_name = 'project_example'
 ```
 
-#### 6\) User model \['user\_model'\]
+#### 6\) User model \['user\_model'\] - Advanced
+
+**⚠️ Disclaimer:** This is an advanced option that should only be used when you know the specifications of a model and want to reproduce it in the platform. 
 
 The definition of a model (or more than one) that user wants to see among the ARIMA models available in the plataform. The user can set the variables it wants in the model, the ARIMA order and the variables constraints.  
 By default, the `user_model` parameter is an empty dictionary, to define a user model it is necessary to create a dictionary in which the keys are the response variable names and the values are lists of specifications, as described below.  
@@ -398,7 +398,7 @@ model_spec = {
                           'lasso' : False,
                           'rf' : True,
                           'corr' : True,
-                          'apply.collinear' : []
+                          'apply.collinear' : False
                          },
     'lags': {"fs_rend_medio": [1,2,3],
              "fs_pmc": [1,2,3]},
@@ -459,14 +459,16 @@ explanatory features). More precisely, if the number of features in the
 dataset exceeds 14, feature selection methods will reduce
 dimensionality, guaranteeing the best results in a much more efficient
 way. In this example, we turn off the Lasso method and work only with
-Random Forests and the correlation approach.
+Random Forests and the correlation approach, we also set **apply.collinear**
+to False, indicating that we do not wish to avoid collinearity among
+the explanatory variables.
 
 ``` python
 'selection_methods': {
                       'lasso' : False,
                       'rf' : True,
                       'corr' : True,
-                      'apply.collinear' : []
+                      'apply.collinear' : False
                       }  
 ```
 

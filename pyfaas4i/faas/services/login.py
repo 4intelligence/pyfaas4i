@@ -1,4 +1,4 @@
-from .auth_zero import get_device_code
+from .auth_zero import get_device_code, request_refresh_token
 from .._utilities import _get_proxies
 
 
@@ -38,4 +38,34 @@ def login(sleep_time=90,
 
     get_device_code(sleep_time,
                     proxies=proxies)
+    return
+
+def refresh_login(**kwargs):
+    '''
+    Refreshes the access token using the refresh_token stored in config.json
+    This allows extending the session without manual login.
+    '''
+
+    if any([x not in ['proxy_url', 'proxy_port'] for x in list(kwargs.keys())]):
+        unexpected = list(kwargs.keys())
+        for arg in ['proxy_url', 'proxy_port']:
+            if arg in list(kwargs.keys()):
+                unexpected.remove(arg)
+
+        raise TypeError(f'refresh_login() got an unexpected keyword argument: {", ".join(unexpected)}')
+    proxy_url = None
+    proxy_port = None
+
+    if 'proxy_url' in kwargs:
+        proxy_url = kwargs['proxy_url']
+
+    if 'proxy_port' in kwargs:
+        proxy_port = kwargs['proxy_port']
+
+    # ----- Get proxies (if any)
+    proxies = _get_proxies(proxy_url=proxy_url,
+                           proxy_port=proxy_port)
+
+    request_refresh_token(proxies=proxies)
+
     return

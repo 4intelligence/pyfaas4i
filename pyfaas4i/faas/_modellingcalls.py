@@ -660,7 +660,7 @@ def run_models(data_list: Dict[str, pd.DataFrame],
 
             if "warning_list" in api_response_validation["info"].keys() and isinstance(
                 api_response_validation["info"]["warning_list"], dict
-            ):
+            ) and api_response_validation["info"]["warning_list"]:
                 print("\nWarning User Input:\n")
                 warning_list = api_response_validation["info"]["warning_list"]
 

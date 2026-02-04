@@ -3,3 +3,5 @@ pandas
 requests
 unidecode
 packaging
+setuptools
+openpyxl
